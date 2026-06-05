@@ -1,5 +1,5 @@
 async function getContratistas() {
-  const res = await fetch('http://localhost:8000/api/contratistas/', {
+  const res = await fetch('https://tumaestro-backend.onrender.com/api/contratistas/', {
     cache: 'no-store'
   })
   return res.json()
