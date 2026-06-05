@@ -1,8 +1,13 @@
 async function getContratistas() {
-  const res = await fetch('https://tumaestro-backend.onrender.com/api/contratistas/', {
-    cache: 'no-store'
-  })
-  return res.json()
+  try {
+    const res = await fetch('https://tumaestro-backend.onrender.com/api/contratistas/', {
+      cache: 'no-store'
+    })
+    if (!res.ok) return []
+    return res.json()
+  } catch (error) {
+    return []
+  }
 }
 
 export default async function Home() {
