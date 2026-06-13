@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+
 const trabajos = [
   { id: 1, cliente: 'Maria Gonzalez', trabajo: 'Reparacion calefon', comuna: 'Las Condes', fecha: 'Hoy 14:30', estado: 'En progreso', monto: '$45.000' },
   { id: 2, cliente: 'Roberto Sanchez', trabajo: 'Instalacion ducha', comuna: 'Providencia', fecha: 'Manana 10:00', estado: 'Pendiente', monto: '$85.000' },
@@ -25,10 +27,31 @@ const menuItems = [
 ]
 
 export default function Panel() {
+  const [autorizado, setAutorizado] = useState(false)
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      window.location.replace('/login')
+    } else {
+      setAutorizado(true)
+    }
+  }, [])
+
+  if (!autorizado) return (
+    <div style={{ minHeight: '100vh', background: '#F8F9FA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: '#6B7280', fontSize: '14px' }}>Verificando sesion...</p>
+    </div>
+  )
+
+  const cerrarSesion = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('refresh')
+    window.location.href = '/'
+  }
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#F8F9FA' }}>
-
-      {/* Sidebar */}
       <div style={{ width: '240px', background: '#1B3A6B', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div style={{ padding: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
           <span style={{ color: '#fff', fontSize: '18px', fontWeight: '600' }}>tumaestro<span style={{ color: '#F97316' }}>.app</span></span>
@@ -51,33 +74,30 @@ export default function Panel() {
           </nav>
         </div>
         <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-          <div onClick={() => window.location.href = '/'} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '8px 12px' }}>
+          <div onClick={() => window.location.href = '/'} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '8px 12px', marginBottom: '4px' }}>
             <span style={{ color: '#93C5FD', fontSize: '14px' }}>← Ver mi perfil publico</span>
+          </div>
+          <div onClick={cerrarSesion} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '8px 12px' }}>
+            <span style={{ color: '#FCA5A5', fontSize: '14px' }}>✕ Cerrar sesion</span>
           </div>
         </div>
       </div>
 
-      {/* Contenido principal */}
       <div style={{ flex: 1, overflow: 'auto' }}>
-
-        {/* Header */}
         <div style={{ background: '#fff', borderBottom: '1px solid #E5E7EB', padding: '0 32px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <h1 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', margin: 0 }}>Bienvenido, Carlos</h1>
-            <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Viernes 5 de junio, 2026</p>
+            <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Viernes 13 de junio, 2026</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
               <span style={{ fontSize: '16px' }}>🔔</span>
-              <span style={{ position: 'absolute', top: '6px', right: '6px', width: '8px', height: '8px', background: '#F97316', borderRadius: '50%' }}></span>
             </div>
             <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#1B3A6B', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '600', fontSize: '13px' }}>CM</div>
           </div>
         </div>
 
         <div style={{ padding: '32px' }}>
-
-          {/* Métricas */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '32px' }}>
             {[
               { label: 'Trabajos activos', valor: '3', icono: '⚒', color: '#EEF2FF', texto: '#1B3A6B' },
@@ -95,7 +115,6 @@ export default function Panel() {
             ))}
           </div>
 
-          {/* Trabajos recientes */}
           <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>Trabajos recientes</h2>
@@ -126,10 +145,7 @@ export default function Panel() {
             </table>
           </div>
 
-          {/* Fila inferior */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-
-            {/* Proximos trabajos */}
             <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Proximos trabajos</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -146,7 +162,6 @@ export default function Panel() {
               </div>
             </div>
 
-            {/* Resenas recientes */}
             <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Resenas recientes</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -167,7 +182,6 @@ export default function Panel() {
                 ))}
               </div>
             </div>
-
           </div>
         </div>
       </div>
