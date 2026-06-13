@@ -3,8 +3,7 @@
 import { useState } from 'react'
 
 const oficios = ['Gasfitero', 'Electricista', 'Pintor', 'Cerrajero', 'Maestro chasquilla', 'Carpintero', 'Jardinero', 'Otro']
-
-const comunas = ['Las Condes', 'Providencia', 'Nunoa', 'Maipu', 'La Florida', 'Vitacura', 'Santiago Centro', 'Pudahuel', 'Macul', 'La Reina', 'Penaranda', 'San Miguel']
+const comunas = ['Las Condes', 'Providencia', 'Nunoa', 'Maipu', 'La Florida', 'Vitacura', 'Santiago Centro', 'Pudahuel', 'Macul', 'La Reina', 'San Miguel']
 
 export default function Registro() {
   const [paso, setPaso] = useState(1)
@@ -13,9 +12,49 @@ export default function Registro() {
 
   const actualizar = (campo, valor) => setForm(prev => ({ ...prev, [campo]: valor }))
 
-  const siguiente = () => { if (paso < 3) setPaso(paso + 1) }
+  const siguiente = () => {
+    if (paso === 1) {
+      if (!form.nombre || !form.apellido || !form.email || !form.telefono) {
+        alert('Por favor completa todos los campos')
+        return
+      }
+    }
+    if (paso === 2) {
+      if (!form.oficio || !form.comuna || !form.experiencia) {
+        alert('Por favor completa todos los campos')
+        return
+      }
+    }
+    if (paso < 3) setPaso(paso + 1)
+  }
+
   const anterior = () => { if (paso > 1) setPaso(paso - 1) }
-  const enviar = () => setEnviado(true)
+
+  const enviar = async () => {
+    if (!form.password || form.password.length < 8) {
+      alert('La contrasena debe tener al menos 8 caracteres')
+      return
+    }
+    if (form.password !== form.confirmar) {
+      alert('Las contrasenas no coinciden')
+      return
+    }
+    try {
+      const res = await fetch('http://localhost:8000/api/registro/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setEnviado(true)
+      } else {
+        alert(data.error || 'Error al registrarse')
+      }
+    } catch (error) {
+      alert('Error de conexion con el servidor')
+    }
+  }
 
   if (enviado) {
     return (
@@ -24,12 +63,8 @@ export default function Registro() {
           <div style={{ width: '64px', height: '64px', background: '#ECFDF5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '28px' }}>✓</div>
           <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '12px' }}>Registro exitoso</h2>
           <p style={{ fontSize: '15px', color: '#6B7280', marginBottom: '32px', lineHeight: '1.6' }}>Bienvenido a tumaestro.app. Tu perfil esta siendo revisado y estara activo en menos de 24 horas.</p>
-          <button onClick={() => window.location.href = '/panel'} style={{ background: '#1B3A6B', border: 'none', color: '#fff', width: '100%', padding: '14px', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', marginBottom: '12px' }}>
-            Ir a mi panel
-          </button>
-          <button onClick={() => window.location.href = '/'} style={{ background: 'transparent', border: '1px solid #E5E7EB', color: '#374151', width: '100%', padding: '14px', borderRadius: '10px', fontSize: '15px', cursor: 'pointer' }}>
-            Ver directorio
-          </button>
+          <button onClick={() => window.location.href = '/panel'} style={{ background: '#1B3A6B', border: 'none', color: '#fff', width: '100%', padding: '14px', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', marginBottom: '12px' }}>Ir a mi panel</button>
+          <button onClick={() => window.location.href = '/'} style={{ background: 'transparent', border: '1px solid #E5E7EB', color: '#374151', width: '100%', padding: '14px', borderRadius: '10px', fontSize: '15px', cursor: 'pointer' }}>Ver directorio</button>
         </div>
       </div>
     )
@@ -37,26 +72,17 @@ export default function Registro() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#F8F9FA' }}>
-
-      {/* Navbar */}
       <nav style={{ background: '#1B3A6B', padding: '0 48px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span onClick={() => window.location.href = '/'} style={{ color: '#fff', fontSize: '20px', fontWeight: '600', cursor: 'pointer' }}>
-          tumaestro<span style={{ color: '#F97316' }}>.app</span>
-        </span>
-        <span style={{ color: '#93C5FD', fontSize: '14px' }}>
-          Ya tienes cuenta? <span onClick={() => window.location.href = '/login'} style={{ color: '#fff', cursor: 'pointer', textDecoration: 'underline' }}>Inicia sesion</span>
-        </span>
+        <span onClick={() => window.location.href = '/'} style={{ color: '#fff', fontSize: '20px', fontWeight: '600', cursor: 'pointer' }}>tumaestro<span style={{ color: '#F97316' }}>.app</span></span>
+        <span style={{ color: '#93C5FD', fontSize: '14px' }}>Ya tienes cuenta? <span onClick={() => window.location.href = '/login'} style={{ color: '#fff', cursor: 'pointer', textDecoration: 'underline' }}>Inicia sesion</span></span>
       </nav>
 
       <div style={{ maxWidth: '560px', margin: '48px auto', padding: '0 24px' }}>
-
-        {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>Crea tu cuenta gratis</h1>
           <p style={{ fontSize: '15px', color: '#6B7280' }}>Empieza a recibir clientes en menos de 5 minutos</p>
         </div>
 
-        {/* Pasos */}
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '32px' }}>
           {[1, 2, 3].map((p, i) => (
             <div key={p} style={{ display: 'flex', alignItems: 'center', flex: i < 2 ? 1 : 'none' }}>
@@ -73,10 +99,7 @@ export default function Registro() {
           ))}
         </div>
 
-        {/* Card formulario */}
         <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '32px' }}>
-
-          {/* Paso 1 — Datos personales */}
           {paso === 1 && (
             <div>
               <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '24px' }}>Datos personales</h2>
@@ -101,7 +124,6 @@ export default function Registro() {
             </div>
           )}
 
-          {/* Paso 2 — Tu oficio */}
           {paso === 2 && (
             <div>
               <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '24px' }}>Tu oficio</h2>
@@ -130,7 +152,6 @@ export default function Registro() {
             </div>
           )}
 
-          {/* Paso 3 — Contrasena */}
           {paso === 3 && (
             <div>
               <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '8px' }}>Crea tu contrasena</h2>
@@ -143,7 +164,7 @@ export default function Registro() {
                 <label style={{ fontSize: '13px', fontWeight: '500', color: '#374151', display: 'block', marginBottom: '6px' }}>Confirmar contrasena</label>
                 <input value={form.confirmar} onChange={e => actualizar('confirmar', e.target.value)} type="password" placeholder="Repite tu contrasena" style={{ width: '100%', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '10px 14px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
-              <div style={{ background: '#F8F9FA', borderRadius: '10px', padding: '16px', marginBottom: '8px' }}>
+              <div style={{ background: '#F8F9FA', borderRadius: '10px', padding: '16px' }}>
                 <p style={{ fontSize: '13px', color: '#374151', fontWeight: '500', marginBottom: '8px' }}>Resumen de tu registro:</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <span style={{ fontSize: '13px', color: '#6B7280' }}>Nombre: <strong style={{ color: '#111827' }}>{form.nombre} {form.apellido}</strong></span>
@@ -155,26 +176,18 @@ export default function Registro() {
             </div>
           )}
 
-          {/* Botones navegacion */}
           <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
             {paso > 1 && (
-              <button onClick={anterior} style={{ flex: 1, background: 'transparent', border: '1px solid #E5E7EB', color: '#374151', padding: '12px', borderRadius: '10px', fontSize: '14px', cursor: 'pointer' }}>
-                Atras
-              </button>
+              <button onClick={anterior} style={{ flex: 1, background: 'transparent', border: '1px solid #E5E7EB', color: '#374151', padding: '12px', borderRadius: '10px', fontSize: '14px', cursor: 'pointer' }}>Atras</button>
             )}
             {paso < 3 ? (
-              <button onClick={siguiente} style={{ flex: 1, background: '#1B3A6B', border: 'none', color: '#fff', padding: '12px', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
-                Continuar
-              </button>
+              <button onClick={siguiente} style={{ flex: 1, background: '#1B3A6B', border: 'none', color: '#fff', padding: '12px', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>Continuar</button>
             ) : (
-              <button onClick={enviar} style={{ flex: 1, background: '#F97316', border: 'none', color: '#fff', padding: '12px', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
-                Crear mi cuenta gratis
-              </button>
+              <button onClick={enviar} style={{ flex: 1, background: '#F97316', border: 'none', color: '#fff', padding: '12px', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>Crear mi cuenta gratis</button>
             )}
           </div>
         </div>
 
-        {/* Trust signals */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', marginTop: '24px' }}>
           {['Sin costo de registro', 'Sin comisiones', 'Cancela cuando quieras'].map(t => (
             <span key={t} style={{ fontSize: '12px', color: '#6B7280', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -182,7 +195,6 @@ export default function Registro() {
             </span>
           ))}
         </div>
-
       </div>
     </div>
   )
