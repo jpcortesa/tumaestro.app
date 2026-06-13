@@ -28,14 +28,35 @@ const menuItems = [
 
 export default function Panel() {
   const [autorizado, setAutorizado] = useState(false)
+  const [usuario, setUsuario] = useState({ nombre: '', email: '' })
 
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) {
       window.location.replace('/login')
-    } else {
-      setAutorizado(true)
+      return
     }
+    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    fetch(`${API}/api/perfil/`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(res => {
+        if (!res.ok) {
+          localStorage.removeItem('token')
+          window.location.replace('/login')
+          return
+        }
+        return res.json()
+      })
+      .then(data => {
+        if (data) {
+          setUsuario(data)
+          setAutorizado(true)
+        }
+      })
+      .catch(() => {
+        window.location.replace('/login')
+      })
   }, [])
 
   if (!autorizado) return (
@@ -60,8 +81,8 @@ export default function Panel() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', marginBottom: '24px' }}>
             <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#F97316', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '700', fontSize: '14px' }}>CM</div>
             <div>
-              <p style={{ color: '#fff', fontSize: '14px', fontWeight: '500', margin: 0 }}>Carlos Munoz</p>
-              <p style={{ color: '#93C5FD', fontSize: '12px', margin: 0 }}>Gasfitero</p>
+              <p style={{ color: '#fff', fontSize: '14px', fontWeight: '500', margin: 0 }}>{usuario.nombre || 'Mi cuenta'}</p>
+              <p style={{ color: '#93C5FD', fontSize: '12px', margin: 0 }}>{usuario.email}</p>
             </div>
           </div>
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -86,7 +107,7 @@ export default function Panel() {
       <div style={{ flex: 1, overflow: 'auto' }}>
         <div style={{ background: '#fff', borderBottom: '1px solid #E5E7EB', padding: '0 32px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <h1 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', margin: 0 }}>Bienvenido, Carlos</h1>
+            <h1 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', margin: 0 }}>Bienvenido, {usuario.nombre ? usuario.nombre.split(' ')[0] : 'Contratista'}</h1>
             <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Viernes 13 de junio, 2026</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
