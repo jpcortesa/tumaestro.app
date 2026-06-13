@@ -13,7 +13,8 @@ export default function Login() {
     setError('')
     setCargando(true)
     try {
-      const res = await fetch('http://localhost:8000/api/token/', {
+      const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const res = await fetch(`${API}/api/token/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: form.email, password: form.password })
