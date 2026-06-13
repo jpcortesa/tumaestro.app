@@ -1,3 +1,5 @@
 from django.contrib import admin
+from .models import Contratista, Trabajo
 
-# Register your models here.
+admin.site.register(Contratista)
+admin.site.register(Trabajo)

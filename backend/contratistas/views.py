@@ -70,3 +70,35 @@ class PerfilView(APIView):
             'email': user.email,
             'username': user.username,
         })
+
+from .models import Contratista, Trabajo
+from .serializers import ContratistaSerializer, TrabajoSerializer
+
+class TrabajosView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        trabajos = Trabajo.objects.filter(usuario=request.user).order_by('-creado_en')
+        serializer = TrabajoSerializer(trabajos, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = TrabajoSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(usuario=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class TrabajoDetalleView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        try:
+            trabajo = Trabajo.objects.get(pk=pk, usuario=request.user)
+        except Trabajo.DoesNotExist:
+            return Response({'error': 'No encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = TrabajoSerializer(trabajo, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
