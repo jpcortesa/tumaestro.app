@@ -51,6 +51,12 @@ const menuItems = [
 
 const itemVacio = () => ({ descripcion: '', cantidad: 1, precio_unitario: '' })
 
+const TIPOS_IMPUESTO = [
+  { value: 'ninguno', label: 'Sin impuesto', tasa: 0 },
+  { value: 'iva', label: 'IVA 19% (Factura)', tasa: 0.19 },
+  { value: 'honorarios', label: 'Retención 15,25% (Boleta honorarios)', tasa: 0.1525 },
+]
+
 export default function Panel() {
   const [autorizado, setAutorizado] = useState(false)
   const [usuario, setUsuario] = useState({ nombre: '', email: '' })
@@ -65,12 +71,14 @@ export default function Panel() {
   const [clientesReal, setClientesReal] = useState([])
   const [showModalCliente, setShowModalCliente] = useState(false)
   const [formCliente, setFormCliente] = useState({ nombre: '', telefono: '', email: '', direccion: '', comuna: '' })
+  const [clienteEditando, setClienteEditando] = useState(null)
 
   // Cotizaciones
   const [cotizacionesReal, setCotizacionesReal] = useState([])
   const [showModalCotizacion, setShowModalCotizacion] = useState(false)
-  const [formCotizacion, setFormCotizacion] = useState({ cliente: '', descripcion: '', detalle: '', incluye_iva: false })
+  const [formCotizacion, setFormCotizacion] = useState({ cliente: '', descripcion: '', detalle: '', incluye_iva: false, tipo_impuesto: 'ninguno' })
   const [items, setItems] = useState([itemVacio()])
+  const [cotizacionEditando, setCotizacionEditando] = useState(null)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -96,9 +104,8 @@ export default function Panel() {
     if (res.ok) { setShowModal(false); setForm({ cliente: '', descripcion: '', comuna: '', monto: '', fecha: '', estado: 'pendiente' }); fetchTrabajos() }
   }
 
-  async function cambiarEstado(id, estadoActual) {
-    const siguientes = { pendiente: 'en_progreso', en_progreso: 'completado', completado: 'pendiente' }
-    await fetch(`${API}/api/trabajos/${id}/`, { method: 'PATCH', headers: headers(), body: JSON.stringify({ estado: siguientes[estadoActual] }) })
+  async function cambiarEstadoDirecto(id, nuevoEstado) {
+    await fetch(`${API}/api/trabajos/${id}/`, { method: 'PATCH', headers: headers(), body: JSON.stringify({ estado: nuevoEstado }) })
     fetchTrabajos()
   }
 
@@ -109,7 +116,18 @@ export default function Panel() {
 
   async function crearCliente() {
     const res = await fetch(`${API}/api/clientes/`, { method: 'POST', headers: headers(), body: JSON.stringify(formCliente) })
-    if (res.ok) { setShowModalCliente(false); setFormCliente({ nombre: '', telefono: '', email: '', direccion: '', comuna: '' }); fetchClientes() }
+    if (res.ok) { setShowModalCliente(false); setClienteEditando(null); setFormCliente({ nombre: '', telefono: '', email: '', direccion: '', comuna: '' }); fetchClientes() }
+  }
+
+  async function editarCliente() {
+    const res = await fetch(`${API}/api/clientes/${clienteEditando}/`, { method: 'PATCH', headers: headers(), body: JSON.stringify(formCliente) })
+    if (res.ok) { setShowModalCliente(false); setClienteEditando(null); setFormCliente({ nombre: '', telefono: '', email: '', direccion: '', comuna: '' }); fetchClientes() }
+  }
+
+  function abrirEditarCliente(c) {
+    setFormCliente({ nombre: c.nombre, telefono: c.telefono, email: c.email, direccion: c.direccion, comuna: c.comuna })
+    setClienteEditando(c.id)
+    setShowModalCliente(true)
   }
 
   async function fetchCotizaciones() {
@@ -119,16 +137,41 @@ export default function Panel() {
 
   async function crearCotizacion() {
     const itemsValidos = items.filter(i => i.descripcion && i.precio_unitario)
+    const incluye_iva = formCotizacion.tipo_impuesto === 'iva'
     const res = await fetch(`${API}/api/cotizaciones/`, {
       method: 'POST', headers: headers(),
-      body: JSON.stringify({ ...formCotizacion, items: itemsValidos })
+      body: JSON.stringify({ ...formCotizacion, incluye_iva, items: itemsValidos })
     })
     if (res.ok) {
-      setShowModalCotizacion(false)
-      setFormCotizacion({ cliente: '', descripcion: '', detalle: '', incluye_iva: false })
-      setItems([itemVacio()])
-      fetchCotizaciones()
+      setShowModalCotizacion(false); setCotizacionEditando(null)
+      setFormCotizacion({ cliente: '', descripcion: '', detalle: '', incluye_iva: false, tipo_impuesto: 'ninguno' })
+      setItems([itemVacio()]); fetchCotizaciones()
     }
+  }
+
+  async function editarCotizacion() {
+    const itemsValidos = items.filter(i => i.descripcion && i.precio_unitario)
+    const tasa = TIPOS_IMPUESTO.find(t => t.value === formCotizacion.tipo_impuesto)?.tasa || 0
+    const subtotal = itemsValidos.reduce((acc, i) => acc + (parseInt(i.cantidad) || 1) * (parseInt(i.precio_unitario) || 0), 0)
+    const monto = Math.round(subtotal * (1 + tasa))
+    const incluye_iva = formCotizacion.tipo_impuesto === 'iva'
+    const res = await fetch(`${API}/api/cotizaciones/${cotizacionEditando}/`, {
+      method: 'PATCH', headers: headers(),
+      body: JSON.stringify({ ...formCotizacion, incluye_iva, monto })
+    })
+    if (res.ok) {
+      setShowModalCotizacion(false); setCotizacionEditando(null)
+      setFormCotizacion({ cliente: '', descripcion: '', detalle: '', incluye_iva: false, tipo_impuesto: 'ninguno' })
+      setItems([itemVacio()]); fetchCotizaciones()
+    }
+  }
+
+  function abrirEditarCotizacion(c) {
+    const tipo = c.incluye_iva ? 'iva' : 'ninguno'
+    setFormCotizacion({ cliente: c.cliente, descripcion: c.descripcion, detalle: c.detalle || '', incluye_iva: c.incluye_iva, tipo_impuesto: tipo })
+    setItems(c.items?.length > 0 ? c.items.map(i => ({ descripcion: i.descripcion, cantidad: i.cantidad, precio_unitario: i.precio_unitario })) : [itemVacio()])
+    setCotizacionEditando(c.id)
+    setShowModalCotizacion(true)
   }
 
   async function cambiarEstadoCotizacion(id, nuevoEstado) {
@@ -138,15 +181,13 @@ export default function Panel() {
   }
 
   const cerrarSesion = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('refresh')
-    window.location.href = '/'
+    localStorage.removeItem('token'); localStorage.removeItem('refresh'); window.location.href = '/'
   }
 
-  // Cálculos cotización
   const subtotalItems = items.reduce((acc, i) => acc + (parseInt(i.cantidad) || 0) * (parseInt(i.precio_unitario) || 0), 0)
-  const iva = formCotizacion.incluye_iva ? Math.round(subtotalItems * 0.19) : 0
-  const total = subtotalItems + iva
+  const tasaImpuesto = TIPOS_IMPUESTO.find(t => t.value === formCotizacion.tipo_impuesto)?.tasa || 0
+  const montoImpuesto = Math.round(subtotalItems * tasaImpuesto)
+  const total = subtotalItems + montoImpuesto
 
   const agregarItem = () => setItems([...items, itemVacio()])
   const quitarItem = (idx) => setItems(items.filter((_, i) => i !== idx))
@@ -160,6 +201,7 @@ export default function Panel() {
 
   const inputStyle = { width: '100%', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '8px 12px', marginTop: '4px', boxSizing: 'border-box', fontSize: '14px' }
   const labelStyle = { fontSize: '13px', color: '#6B7280', fontWeight: 500 }
+  const btnEditar = { background: 'none', border: '1px solid #E5E7EB', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#1B3A6B' }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#F8F9FA' }}>
@@ -325,14 +367,14 @@ export default function Panel() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#F9FAFB' }}>
-                    {['Cliente', 'Descripción', 'Comuna', 'Fecha', 'Estado', 'Monto', 'Acción'].map(h => (
+                    {['Cliente', 'Descripción', 'Comuna', 'Fecha', 'Estado', 'Monto'].map(h => (
                       <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', color: '#6B7280', fontWeight: 600, textTransform: 'uppercase' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {trabajosReal.length === 0 ? (
-                    <tr><td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: '#6B7280' }}>No hay trabajos aún</td></tr>
+                    <tr><td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#6B7280' }}>No hay trabajos aún</td></tr>
                   ) : trabajosReal.map(t => (
                     <tr key={t.id} style={{ borderTop: '1px solid #F3F4F6' }}>
                       <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: '14px' }}>{t.cliente}</td>
@@ -340,14 +382,29 @@ export default function Panel() {
                       <td style={{ padding: '12px 16px', fontSize: '14px' }}>{t.comuna}</td>
                       <td style={{ padding: '12px 16px', fontSize: '14px' }}>{t.fecha}</td>
                       <td style={{ padding: '12px 16px' }}>
-                        <span style={{ background: estadoColorReal[t.estado]?.bg || '#F3F4F6', color: estadoColorReal[t.estado]?.color || '#374151', padding: '4px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 500 }}>
-                          {t.estado?.replace('_', ' ')}
-                        </span>
+                        {t.estado === 'completado' ? (
+                          <span style={{ background: '#ECFDF5', color: '#065F46', padding: '4px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 600 }}>
+                            ✓ Completado
+                          </span>
+                        ) : (
+                          <select
+                            value={t.estado}
+                            onChange={e => cambiarEstadoDirecto(t.id, e.target.value)}
+                            style={{
+                              border: `1px solid ${t.estado === 'pendiente' ? '#C7D2FE' : '#FDE68A'}`,
+                              background: t.estado === 'pendiente' ? '#EEF2FF' : '#FEF3C7',
+                              color: t.estado === 'pendiente' ? '#3730A3' : '#92400E',
+                              borderRadius: '999px', padding: '4px 10px', fontSize: '12px',
+                              fontWeight: 500, cursor: 'pointer', outline: 'none'
+                            }}
+                          >
+                            <option value="pendiente">Pendiente</option>
+                            <option value="en_progreso">En progreso</option>
+                            <option value="completado">Completado</option>
+                          </select>
+                        )}
                       </td>
                       <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: '14px' }}>${t.monto?.toLocaleString('es-CL')}</td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <button onClick={() => cambiarEstado(t.id, t.estado)} style={{ background: 'none', border: '1px solid #E5E7EB', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#1B3A6B' }}>Avanzar</button>
-                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -381,7 +438,8 @@ export default function Panel() {
         {seccion === 'clientes' && (
           <div style={{ padding: '32px' }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
-              <button onClick={() => setShowModalCliente(true)} style={{ background: '#F97316', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
+              <button onClick={() => { setClienteEditando(null); setFormCliente({ nombre: '', telefono: '', email: '', direccion: '', comuna: '' }); setShowModalCliente(true) }}
+                style={{ background: '#F97316', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
                 + Nuevo cliente
               </button>
             </div>
@@ -389,14 +447,14 @@ export default function Panel() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#F9FAFB' }}>
-                    {['Nombre', 'Teléfono', 'Email', 'Comuna', 'Dirección'].map(h => (
+                    {['Nombre', 'Teléfono', 'Email', 'Comuna', 'Dirección', 'Acción'].map(h => (
                       <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', color: '#6B7280', fontWeight: 600, textTransform: 'uppercase' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {clientesReal.length === 0 ? (
-                    <tr><td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: '#6B7280' }}>No hay clientes aún</td></tr>
+                    <tr><td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#6B7280' }}>No hay clientes aún</td></tr>
                   ) : clientesReal.map(c => (
                     <tr key={c.id} style={{ borderTop: '1px solid #F3F4F6' }}>
                       <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: '14px' }}>{c.nombre}</td>
@@ -404,6 +462,9 @@ export default function Panel() {
                       <td style={{ padding: '12px 16px', fontSize: '14px', color: '#6B7280' }}>{c.email}</td>
                       <td style={{ padding: '12px 16px', fontSize: '14px' }}>{c.comuna}</td>
                       <td style={{ padding: '12px 16px', fontSize: '14px', color: '#6B7280' }}>{c.direccion}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <button onClick={() => abrirEditarCliente(c)} style={btnEditar}>Editar</button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -412,7 +473,7 @@ export default function Panel() {
             {showModalCliente && (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
                 <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '480px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <h2 style={{ fontWeight: 700, color: '#1B3A6B', margin: 0 }}>Nuevo Cliente</h2>
+                  <h2 style={{ fontWeight: 700, color: '#1B3A6B', margin: 0 }}>{clienteEditando ? 'Editar Cliente' : 'Nuevo Cliente'}</h2>
                   <div><label style={labelStyle}>Nombre</label><input type="text" value={formCliente.nombre} onChange={e => setFormCliente({ ...formCliente, nombre: e.target.value })} style={inputStyle} /></div>
                   <div><label style={labelStyle}>Teléfono</label><input type="text" value={formCliente.telefono} onChange={e => setFormCliente({ ...formCliente, telefono: e.target.value })} style={inputStyle} /></div>
                   <div><label style={labelStyle}>Email</label><input type="email" value={formCliente.email} onChange={e => setFormCliente({ ...formCliente, email: e.target.value })} style={inputStyle} /></div>
@@ -424,8 +485,10 @@ export default function Panel() {
                   </div>
                   <div><label style={labelStyle}>Dirección</label><input type="text" value={formCliente.direccion} onChange={e => setFormCliente({ ...formCliente, direccion: e.target.value })} style={inputStyle} /></div>
                   <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                    <button onClick={() => setShowModalCliente(false)} style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>Cancelar</button>
-                    <button onClick={crearCliente} style={{ flex: 1, padding: '10px', background: '#F97316', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>Guardar</button>
+                    <button onClick={() => { setShowModalCliente(false); setClienteEditando(null) }} style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>Cancelar</button>
+                    <button onClick={clienteEditando ? editarCliente : crearCliente} style={{ flex: 1, padding: '10px', background: '#F97316', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
+                      {clienteEditando ? 'Guardar cambios' : 'Guardar'}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -437,7 +500,8 @@ export default function Panel() {
         {seccion === 'cotizaciones' && (
           <div style={{ padding: '32px' }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
-              <button onClick={() => setShowModalCotizacion(true)} style={{ background: '#F97316', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
+              <button onClick={() => { setCotizacionEditando(null); setFormCotizacion({ cliente: '', descripcion: '', detalle: '', incluye_iva: false, tipo_impuesto: 'ninguno' }); setItems([itemVacio()]); setShowModalCotizacion(true) }}
+                style={{ background: '#F97316', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
                 + Nueva cotización
               </button>
             </div>
@@ -445,7 +509,7 @@ export default function Panel() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#F9FAFB' }}>
-                    {['Cliente', 'Descripción', 'Subtotal', 'IVA', 'Total', 'Estado', 'Acciones'].map(h => (
+                    {['Cliente', 'Descripción', 'Subtotal', 'Impuesto', 'Total', 'Estado', 'Acciones'].map(h => (
                       <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', color: '#6B7280', fontWeight: 600, textTransform: 'uppercase' }}>{h}</th>
                     ))}
                   </tr>
@@ -455,29 +519,30 @@ export default function Panel() {
                     <tr><td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: '#6B7280' }}>No hay cotizaciones aún</td></tr>
                   ) : cotizacionesReal.map(c => {
                     const subtotal = c.incluye_iva ? Math.round(c.monto / 1.19) : c.monto
-                    const ivaVal = c.incluye_iva ? c.monto - subtotal : 0
+                    const impuesto = c.incluye_iva ? c.monto - subtotal : 0
                     return (
                       <tr key={c.id} style={{ borderTop: '1px solid #F3F4F6' }}>
                         <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: '14px' }}>{clientesReal.find(cl => cl.id === c.cliente)?.nombre || c.cliente}</td>
                         <td style={{ padding: '12px 16px', color: '#6B7280', fontSize: '14px' }}>{c.descripcion}</td>
                         <td style={{ padding: '12px 16px', fontSize: '14px' }}>${subtotal.toLocaleString('es-CL')}</td>
-                        <td style={{ padding: '12px 16px', fontSize: '14px', color: c.incluye_iva ? '#92400E' : '#9CA3AF' }}>{c.incluye_iva ? `$${ivaVal.toLocaleString('es-CL')}` : '—'}</td>
+                        <td style={{ padding: '12px 16px', fontSize: '14px', color: impuesto > 0 ? '#92400E' : '#9CA3AF' }}>
+                          {impuesto > 0 ? `$${impuesto.toLocaleString('es-CL')}` : '—'}
+                        </td>
                         <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: '14px' }}>${c.monto?.toLocaleString('es-CL')}</td>
                         <td style={{ padding: '12px 16px' }}>
                           <span style={{ background: estadoColorCotizacion[c.estado]?.bg || '#F3F4F6', color: estadoColorCotizacion[c.estado]?.color || '#374151', padding: '4px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 500 }}>
                             {c.estado}
                           </span>
                         </td>
-                        <td style={{ padding: '12px 16px', display: 'flex', gap: '8px' }}>
-                          {c.estado === 'borrador' && (
-                            <button onClick={() => cambiarEstadoCotizacion(c.id, 'enviada')} style={{ background: 'none', border: '1px solid #E5E7EB', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#1B3A6B' }}>Enviar</button>
-                          )}
-                          {c.estado === 'enviada' && (
-                            <>
-                              <button onClick={() => cambiarEstadoCotizacion(c.id, 'aprobada')} style={{ background: '#ECFDF5', border: 'none', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#065F46', fontWeight: 600 }}>Aprobar</button>
-                              <button onClick={() => cambiarEstadoCotizacion(c.id, 'rechazada')} style={{ background: '#FEE2E2', border: 'none', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#991B1B' }}>Rechazar</button>
-                            </>
-                          )}
+                        <td style={{ padding: '12px 16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {c.estado === 'borrador' && <>
+                            <button onClick={() => abrirEditarCotizacion(c)} style={btnEditar}>Editar</button>
+                            <button onClick={() => cambiarEstadoCotizacion(c.id, 'enviada')} style={{ ...btnEditar, color: '#3730A3', borderColor: '#C7D2FE' }}>Enviar</button>
+                          </>}
+                          {c.estado === 'enviada' && <>
+                            <button onClick={() => cambiarEstadoCotizacion(c.id, 'aprobada')} style={{ background: '#ECFDF5', border: 'none', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#065F46', fontWeight: 600 }}>Aprobar</button>
+                            <button onClick={() => cambiarEstadoCotizacion(c.id, 'rechazada')} style={{ background: '#FEE2E2', border: 'none', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#991B1B' }}>Rechazar</button>
+                          </>}
                         </td>
                       </tr>
                     )
@@ -486,28 +551,23 @@ export default function Panel() {
               </table>
             </div>
 
-            {/* MODAL NUEVA COTIZACIÓN */}
             {showModalCotizacion && (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, overflowY: 'auto', padding: '24px' }}>
                 <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '600px', display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '90vh', overflowY: 'auto' }}>
-                  <h2 style={{ fontWeight: 700, color: '#1B3A6B', margin: 0 }}>Nueva Cotización</h2>
-
+                  <h2 style={{ fontWeight: 700, color: '#1B3A6B', margin: 0 }}>{cotizacionEditando ? 'Editar Cotización' : 'Nueva Cotización'}</h2>
                   <div><label style={labelStyle}>Cliente</label>
                     <select value={formCotizacion.cliente} onChange={e => setFormCotizacion({ ...formCotizacion, cliente: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
                       <option value="">Selecciona un cliente</option>
                       {clientesReal.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                     </select>
                   </div>
-
                   <div><label style={labelStyle}>Descripción general</label>
                     <input type="text" value={formCotizacion.descripcion} onChange={e => setFormCotizacion({ ...formCotizacion, descripcion: e.target.value })} style={inputStyle} placeholder="Ej: Reparación sistema eléctrico" />
                   </div>
-
-                  {/* ITEMS */}
                   <div>
                     <label style={{ ...labelStyle, display: 'block', marginBottom: '8px' }}>Items de la cotización</label>
                     <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 120px 40px', gap: '0', background: '#F9FAFB', padding: '8px 12px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 120px 40px', background: '#F9FAFB', padding: '8px 12px' }}>
                         <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600, textTransform: 'uppercase' }}>Descripción</span>
                         <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600, textTransform: 'uppercase' }}>Cant.</span>
                         <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600, textTransform: 'uppercase' }}>Precio unit.</span>
@@ -515,12 +575,9 @@ export default function Panel() {
                       </div>
                       {items.map((item, idx) => (
                         <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 120px 40px', gap: '4px', padding: '8px 12px', borderTop: '1px solid #F3F4F6', alignItems: 'center' }}>
-                          <input type="text" value={item.descripcion} onChange={e => actualizarItem(idx, 'descripcion', e.target.value)}
-                            placeholder="Ej: Mano de obra" style={{ border: '1px solid #E5E7EB', borderRadius: '6px', padding: '6px 8px', fontSize: '13px', boxSizing: 'border-box' }} />
-                          <input type="number" value={item.cantidad} onChange={e => actualizarItem(idx, 'cantidad', e.target.value)}
-                            min="1" style={{ border: '1px solid #E5E7EB', borderRadius: '6px', padding: '6px 8px', fontSize: '13px', boxSizing: 'border-box' }} />
-                          <input type="number" value={item.precio_unitario} onChange={e => actualizarItem(idx, 'precio_unitario', e.target.value)}
-                            placeholder="0" style={{ border: '1px solid #E5E7EB', borderRadius: '6px', padding: '6px 8px', fontSize: '13px', boxSizing: 'border-box' }} />
+                          <input type="text" value={item.descripcion} onChange={e => actualizarItem(idx, 'descripcion', e.target.value)} placeholder="Ej: Mano de obra" style={{ border: '1px solid #E5E7EB', borderRadius: '6px', padding: '6px 8px', fontSize: '13px', boxSizing: 'border-box' }} />
+                          <input type="number" value={item.cantidad} onChange={e => actualizarItem(idx, 'cantidad', e.target.value)} min="1" style={{ border: '1px solid #E5E7EB', borderRadius: '6px', padding: '6px 8px', fontSize: '13px', boxSizing: 'border-box' }} />
+                          <input type="number" value={item.precio_unitario} onChange={e => actualizarItem(idx, 'precio_unitario', e.target.value)} placeholder="0" style={{ border: '1px solid #E5E7EB', borderRadius: '6px', padding: '6px 8px', fontSize: '13px', boxSizing: 'border-box' }} />
                           <button onClick={() => quitarItem(idx)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '16px', padding: '0' }}>×</button>
                         </div>
                       ))}
@@ -529,31 +586,35 @@ export default function Panel() {
                       + Agregar item
                     </button>
                   </div>
-
-                  {/* IVA Y TOTALES */}
-                  <div style={{ background: '#F8F9FA', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ background: '#F8F9FA', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
                       <span style={{ color: '#6B7280' }}>Subtotal</span>
                       <span style={{ fontWeight: 600 }}>${subtotalItems.toLocaleString('es-CL')}</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#6B7280' }}>
-                        <input type="checkbox" checked={formCotizacion.incluye_iva} onChange={e => setFormCotizacion({ ...formCotizacion, incluye_iva: e.target.checked })} />
-                        IVA 19%
-                      </label>
-                      <span style={{ fontSize: '14px', color: formCotizacion.incluye_iva ? '#92400E' : '#9CA3AF' }}>
-                        {formCotizacion.incluye_iva ? `+$${iva.toLocaleString('es-CL')}` : '—'}
-                      </span>
+                    <div>
+                      <label style={{ ...labelStyle, display: 'block', marginBottom: '6px' }}>Tipo de documento / impuesto</label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {TIPOS_IMPUESTO.map(tipo => (
+                          <label key={tipo.value} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '8px 12px', borderRadius: '8px', border: `1px solid ${formCotizacion.tipo_impuesto === tipo.value ? '#1B3A6B' : '#E5E7EB'}`, background: formCotizacion.tipo_impuesto === tipo.value ? '#EEF2FF' : '#fff' }}>
+                            <input type="radio" name="tipo_impuesto" value={tipo.value} checked={formCotizacion.tipo_impuesto === tipo.value} onChange={() => setFormCotizacion({ ...formCotizacion, tipo_impuesto: tipo.value })} style={{ accentColor: '#1B3A6B' }} />
+                            <span style={{ fontSize: '13px', fontWeight: 500, color: '#111827', flex: 1 }}>{tipo.label}</span>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: tipo.tasa > 0 ? '#92400E' : '#9CA3AF' }}>
+                              {tipo.tasa > 0 ? `+$${Math.round(subtotalItems * tipo.tasa).toLocaleString('es-CL')}` : '—'}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
-                    <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '10px', display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ fontWeight: 700, color: '#111827' }}>Total</span>
                       <span style={{ fontWeight: 700, fontSize: '16px', color: '#1B3A6B' }}>${total.toLocaleString('es-CL')}</span>
                     </div>
                   </div>
-
                   <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                    <button onClick={() => { setShowModalCotizacion(false); setItems([itemVacio()]) }} style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>Cancelar</button>
-                    <button onClick={crearCotizacion} style={{ flex: 1, padding: '10px', background: '#F97316', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>Guardar cotización</button>
+                    <button onClick={() => { setShowModalCotizacion(false); setCotizacionEditando(null); setItems([itemVacio()]) }} style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>Cancelar</button>
+                    <button onClick={cotizacionEditando ? editarCotizacion : crearCotizacion} style={{ flex: 1, padding: '10px', background: '#F97316', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
+                      {cotizacionEditando ? 'Guardar cambios' : 'Guardar cotización'}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -561,7 +622,6 @@ export default function Panel() {
           </div>
         )}
 
-        {/* SECCIONES PENDIENTES */}
         {['resenas', 'configuracion'].includes(seccion) && (
           <div style={{ padding: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px' }}>
             <p style={{ color: '#6B7280', fontSize: '16px' }}>Sección en construcción 🚧</p>

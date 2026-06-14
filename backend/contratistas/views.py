@@ -115,6 +115,20 @@ class ClientesView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class ClienteDetalleView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        try:
+            cliente = Cliente.objects.get(pk=pk, usuario=request.user)
+        except Cliente.DoesNotExist:
+            return Response({'error': 'No encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = ClienteSerializer(cliente, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class CotizacionesView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -127,7 +141,6 @@ class CotizacionesView(APIView):
         items_data = request.data.get('items', [])
         incluye_iva = request.data.get('incluye_iva', False)
 
-        # Calcular monto total desde los items
         subtotal = sum(int(i.get('cantidad', 1)) * int(i.get('precio_unitario', 0)) for i in items_data)
         monto = int(subtotal * 1.19) if incluye_iva else subtotal
 
