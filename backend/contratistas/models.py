@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -10,7 +11,7 @@ class Contratista(models.Model):
 
     def __str__(self):
         return f"{self.nombre} - {self.oficio}"
-    
+
 class Cliente(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
     nombre = models.CharField(max_length=100)
@@ -36,7 +37,9 @@ class Cotizacion(models.Model):
     descripcion = models.CharField(max_length=200)
     detalle = models.TextField(blank=True)
     monto = models.IntegerField(default=0)
+    incluye_iva = models.BooleanField(default=False)
     estado = models.CharField(max_length=20, choices=ESTADOS, default='borrador')
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     creado_en = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -66,7 +69,7 @@ class ItemCotizacion(models.Model):
         return self.cantidad * self.precio_unitario
 
     def __str__(self):
-        return f"{self.descripcion} x{self.cantidad}"   
+        return f"{self.descripcion} x{self.cantidad}"
 
 class Trabajo(models.Model):
     ESTADOS = [
@@ -88,5 +91,3 @@ class Trabajo(models.Model):
 
     def __str__(self):
         return f"{self.cliente} - {self.descripcion}"
-    
-    

@@ -1,6 +1,6 @@
 from rest_framework.routers import DefaultRouter
 from django.urls import path
-from .views import ContratistaViewSet, RegistroView, PerfilView, TrabajosView, TrabajoDetalleView, ClientesView, ClienteDetalleView, CotizacionesView, CotizacionDetalleView
+from .views import ContratistaViewSet, RegistroView, PerfilView, TrabajosView, TrabajoDetalleView, ClientesView, ClienteDetalleView, CotizacionesView, CotizacionDetalleView, cotizacion_publica, cotizacion_responder
 
 router = DefaultRouter()
 router.register(r'contratistas', ContratistaViewSet)
@@ -14,4 +14,6 @@ urlpatterns = router.urls + [
     path('clientes/<int:pk>/', ClienteDetalleView.as_view()),
     path('cotizaciones/', CotizacionesView.as_view()),
     path('cotizaciones/<int:pk>/', CotizacionDetalleView.as_view()),
+    path('cotizaciones/publica/<uuid:token>/', cotizacion_publica),
+    path('cotizaciones/publica/<uuid:token>/responder/', cotizacion_responder),
 ]

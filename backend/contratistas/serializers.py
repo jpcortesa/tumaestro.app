@@ -29,4 +29,4 @@ class CotizacionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cotizacion
         fields = '__all__'
-        read_only_fields = ['usuario', 'creado_en']
+        read_only_fields = ['usuario', 'creado_en', 'token']

@@ -79,6 +79,9 @@ export default function Panel() {
   const [formCotizacion, setFormCotizacion] = useState({ cliente: '', descripcion: '', detalle: '', incluye_iva: false, tipo_impuesto: 'ninguno' })
   const [items, setItems] = useState([itemVacio()])
   const [cotizacionEditando, setCotizacionEditando] = useState(null)
+  const [linkCotizacion, setLinkCotizacion] = useState(null)
+  const [showModalLink, setShowModalLink] = useState(false)
+  const [copiado, setCopiado] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -175,9 +178,22 @@ export default function Panel() {
   }
 
   async function cambiarEstadoCotizacion(id, nuevoEstado) {
-    await fetch(`${API}/api/cotizaciones/${id}/`, { method: 'PATCH', headers: headers(), body: JSON.stringify({ estado: nuevoEstado }) })
+    const res = await fetch(`${API}/api/cotizaciones/${id}/`, { method: 'PATCH', headers: headers(), body: JSON.stringify({ estado: nuevoEstado }) })
+    const data = await res.json()
     fetchCotizaciones()
     if (nuevoEstado === 'aprobada') fetchTrabajos()
+    if (nuevoEstado === 'enviada' && data.token) {
+      const BASE = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
+      setLinkCotizacion(`${BASE}/cotizacion/${data.token}`)
+      setShowModalLink(true)
+      setCopiado(false)
+    }
+  }
+
+  function copiarLink() {
+    navigator.clipboard.writeText(linkCotizacion)
+    setCopiado(true)
+    setTimeout(() => setCopiado(false), 2000)
   }
 
   const cerrarSesion = () => {
@@ -266,6 +282,33 @@ export default function Panel() {
             <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#1B3A6B', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '600', fontSize: '13px' }}>CM</div>
           </div>
         </div>
+
+        {/* MODAL LINK COTIZACIÓN */}
+        {showModalLink && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
+            <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '520px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '40px', marginBottom: '8px' }}>📤</div>
+                <h2 style={{ fontWeight: 700, color: '#1B3A6B', margin: '0 0 8px' }}>Cotización enviada</h2>
+                <p style={{ color: '#6B7280', fontSize: '14px', margin: 0 }}>Comparte este link con tu cliente para que pueda aprobar o rechazar la cotización.</p>
+              </div>
+              <div style={{ background: '#F8F9FA', borderRadius: '8px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '13px', color: '#374151', flex: 1, wordBreak: 'break-all' }}>{linkCotizacion}</span>
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button onClick={copiarLink} style={{ flex: 1, padding: '10px', background: copiado ? '#ECFDF5' : '#1B3A6B', color: copiado ? '#065F46' : 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px', transition: 'all 0.2s' }}>
+                  {copiado ? '✓ ¡Copiado!' : '📋 Copiar link'}
+                </button>
+                <button onClick={() => window.open(linkCotizacion, '_blank')} style={{ flex: 1, padding: '10px', background: 'none', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', color: '#374151' }}>
+                  👁 Ver cotización
+                </button>
+              </div>
+              <button onClick={() => setShowModalLink(false)} style={{ padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px', color: '#6B7280' }}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* SECCIÓN DASHBOARD */}
         {seccion === 'dashboard' && (
@@ -383,21 +426,10 @@ export default function Panel() {
                       <td style={{ padding: '12px 16px', fontSize: '14px' }}>{t.fecha}</td>
                       <td style={{ padding: '12px 16px' }}>
                         {t.estado === 'completado' ? (
-                          <span style={{ background: '#ECFDF5', color: '#065F46', padding: '4px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 600 }}>
-                            ✓ Completado
-                          </span>
+                          <span style={{ background: '#ECFDF5', color: '#065F46', padding: '4px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 600 }}>✓ Completado</span>
                         ) : (
-                          <select
-                            value={t.estado}
-                            onChange={e => cambiarEstadoDirecto(t.id, e.target.value)}
-                            style={{
-                              border: `1px solid ${t.estado === 'pendiente' ? '#C7D2FE' : '#FDE68A'}`,
-                              background: t.estado === 'pendiente' ? '#EEF2FF' : '#FEF3C7',
-                              color: t.estado === 'pendiente' ? '#3730A3' : '#92400E',
-                              borderRadius: '999px', padding: '4px 10px', fontSize: '12px',
-                              fontWeight: 500, cursor: 'pointer', outline: 'none'
-                            }}
-                          >
+                          <select value={t.estado} onChange={e => cambiarEstadoDirecto(t.id, e.target.value)}
+                            style={{ border: `1px solid ${t.estado === 'pendiente' ? '#C7D2FE' : '#FDE68A'}`, background: t.estado === 'pendiente' ? '#EEF2FF' : '#FEF3C7', color: t.estado === 'pendiente' ? '#3730A3' : '#92400E', borderRadius: '999px', padding: '4px 10px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', outline: 'none' }}>
                             <option value="pendiente">Pendiente</option>
                             <option value="en_progreso">En progreso</option>
                             <option value="completado">Completado</option>
@@ -540,9 +572,10 @@ export default function Panel() {
                             <button onClick={() => cambiarEstadoCotizacion(c.id, 'enviada')} style={{ ...btnEditar, color: '#3730A3', borderColor: '#C7D2FE' }}>Enviar</button>
                           </>}
                           {c.estado === 'enviada' && <>
-                            <button onClick={() => cambiarEstadoCotizacion(c.id, 'aprobada')} style={{ background: '#ECFDF5', border: 'none', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#065F46', fontWeight: 600 }}>Aprobar</button>
-                            <button onClick={() => cambiarEstadoCotizacion(c.id, 'rechazada')} style={{ background: '#FEE2E2', border: 'none', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#991B1B' }}>Rechazar</button>
+                            <button onClick={() => { const BASE = window.location.origin; setLinkCotizacion(`${BASE}/cotizacion/${c.token}`); setShowModalLink(true); setCopiado(false) }} style={{ ...btnEditar, color: '#3730A3', borderColor: '#C7D2FE' }}>Ver link</button>
                           </>}
+                          {c.estado === 'aprobada' && <span style={{ fontSize: '12px', color: '#065F46', fontWeight: 600 }}>✓ Aprobada</span>}
+                          {c.estado === 'rechazada' && <span style={{ fontSize: '12px', color: '#991B1B' }}>✗ Rechazada</span>}
                         </td>
                       </tr>
                     )
