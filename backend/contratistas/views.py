@@ -59,7 +59,7 @@ def enviar_email_cotizacion_cliente(cotizacion, link):
         contratista_nombre = f'{cotizacion.usuario.first_name} {cotizacion.usuario.last_name}'.strip()
         monto_formateado = f"{cotizacion.monto:,}".replace(",", ".")
         resend.Emails.send({
-            "from": "tumaestro.app <noreply@tumaestro.app>",
+            "from": "tumaestro.app <notificaciones@tumaestro.app>",
             "to": cliente.email,
             "subject": f"📋 Cotización de {contratista_nombre} lista para revisar",
             "html": f"""
