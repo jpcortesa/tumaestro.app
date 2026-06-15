@@ -1,17 +1,39 @@
 'use client'
 
-const contratistas = [
-  { id: 1, nombre: 'Carlos Muñoz', oficio: 'Gasfitero', exp: 8, rating: 4.9, resenas: 127, comuna: 'Las Condes', verificado: true, iniciales: 'CM', color: '#1B3A6B' },
-  { id: 2, nombre: 'Ana Rojas', oficio: 'Electricista', exp: 12, rating: 4.8, resenas: 89, comuna: 'Providencia', verificado: true, iniciales: 'AR', color: '#0F6E56' },
-  { id: 3, nombre: 'Diego Pérez', oficio: 'Pintor', exp: 5, rating: 4.7, resenas: 64, comuna: 'Ñuñoa', verificado: true, iniciales: 'DP', color: '#534AB7' },
-  { id: 4, nombre: 'Sofía Vargas', oficio: 'Cerrajera', exp: 6, rating: 5.0, resenas: 43, comuna: 'Vitacura', verificado: true, iniciales: 'SV', color: '#854F0B' },
-  { id: 5, nombre: 'Marco Torres', oficio: 'Gasfitero', exp: 15, rating: 4.6, resenas: 211, comuna: 'Maipú', verificado: false, iniciales: 'MT', color: '#1B3A6B' },
-  { id: 6, nombre: 'Valentina Cruz', oficio: 'Electricista', exp: 9, rating: 4.9, resenas: 76, comuna: 'La Florida', verificado: true, iniciales: 'VC', color: '#0F6E56' },
-]
+import { useEffect, useState } from 'react'
 
-const oficios = ['Todos', 'Gasfiteros', 'Electricistas', 'Pintores', 'Cerrajeros']
+const oficios = ['Todos', 'Gasfitero', 'Electricista', 'Pintor', 'Cerrajero', 'Jardinero', 'Carpintero']
+
+const colores = ['#1B3A6B', '#0F6E56', '#534AB7', '#854F0B', '#B45309', '#065F46']
+
+function iniciales(nombre) {
+  return nombre.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+}
+
+function colorPorNombre(nombre) {
+  let hash = 0
+  for (let i = 0; i < nombre.length; i++) hash += nombre.charCodeAt(i)
+  return colores[hash % colores.length]
+}
 
 export default function Home() {
+  const [contratistas, setContratistas] = useState([])
+  const [filtroOficio, setFiltroOficio] = useState('Todos')
+  const [loading, setLoading] = useState(true)
+
+  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
+  useEffect(() => {
+    fetch(`${API}/api/publico/contratistas/`)
+      .then(res => res.json())
+      .then(data => { setContratistas(data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const filtrados = filtroOficio === 'Todos'
+    ? contratistas
+    : contratistas.filter(c => c.oficio?.toLowerCase() === filtroOficio.toLowerCase())
+
   return (
     <div style={{ minHeight: '100vh', background: '#F8F9FA' }}>
       <nav style={{ background: '#1B3A6B', padding: '0 48px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -68,36 +90,43 @@ export default function Home() {
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 48px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {oficios.map((o, i) => (
-              <button key={o} style={{ padding: '8px 18px', borderRadius: '999px', fontSize: '14px', cursor: 'pointer', fontWeight: i === 0 ? '500' : '400', background: i === 0 ? '#1B3A6B' : '#fff', color: i === 0 ? '#fff' : '#374151', border: i === 0 ? 'none' : '1px solid #E5E7EB' }}>{o}</button>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {oficios.map(o => (
+              <button key={o} onClick={() => setFiltroOficio(o)} style={{ padding: '8px 18px', borderRadius: '999px', fontSize: '14px', cursor: 'pointer', fontWeight: filtroOficio === o ? '500' : '400', background: filtroOficio === o ? '#1B3A6B' : '#fff', color: filtroOficio === o ? '#fff' : '#374151', border: filtroOficio === o ? 'none' : '1px solid #E5E7EB' }}>{o}</button>
             ))}
           </div>
-          <span style={{ fontSize: '14px', color: '#6B7280' }}>{contratistas.length} profesionales disponibles</span>
+          <span style={{ fontSize: '14px', color: '#6B7280' }}>{filtrados.length} profesionales disponibles</span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginBottom: '48px' }}>
-          {contratistas.map(c => (
-            <div key={c.id} onClick={() => window.location.href = '/contratista/' + c.id} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: c.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '600', fontSize: '16px' }}>
-                  {c.iniciales}
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '4rem', color: '#6B7280' }}>Cargando profesionales...</div>
+        ) : filtrados.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '4rem', color: '#6B7280' }}>No hay contratistas disponibles aún.</div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginBottom: '48px' }}>
+            {filtrados.map(c => {
+              const color = colorPorNombre(c.nombre)
+              return (
+                <div key={c.id} onClick={() => window.location.href = '/contratista/' + c.id}
+                  style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px', cursor: 'pointer', transition: 'box-shadow 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)'}
+                  onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                    <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '600', fontSize: '16px' }}>
+                      {iniciales(c.nombre)}
+                    </div>
+                    {c.verificado && (
+                      <span style={{ background: '#ECFDF5', color: '#059669', fontSize: '12px', padding: '4px 10px', borderRadius: '999px', fontWeight: '500' }}>✓ Verificado</span>
+                    )}
+                  </div>
+                  <p style={{ fontWeight: '600', fontSize: '16px', color: '#111827', marginBottom: '4px' }}>{c.nombre}</p>
+                  <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '12px' }}>{c.oficio} · {c.experiencia} años exp.</p>
+                  <p style={{ fontSize: '13px', color: '#6B7280' }}>📍 {c.comuna}</p>
                 </div>
-                {c.verificado && (
-                  <span style={{ background: '#ECFDF5', color: '#059669', fontSize: '12px', padding: '4px 10px', borderRadius: '999px', fontWeight: '500' }}>✓ Verificado</span>
-                )}
-              </div>
-              <p style={{ fontWeight: '600', fontSize: '16px', color: '#111827', marginBottom: '4px' }}>{c.nombre}</p>
-              <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '12px' }}>{c.oficio} · {c.exp} anos exp.</p>
-              <div style={{ marginBottom: '8px' }}>
-                <span style={{ color: '#F97316' }}>{'★'.repeat(Math.floor(c.rating))}</span>
-                <span style={{ fontSize: '13px', color: '#374151', marginLeft: '6px' }}>{c.rating}</span>
-                <span style={{ fontSize: '13px', color: '#9CA3AF', marginLeft: '4px' }}>({c.resenas})</span>
-              </div>
-              <p style={{ fontSize: '13px', color: '#6B7280' }}>📍 {c.comuna}</p>
-            </div>
-          ))}
-        </div>
+              )
+            })}
+          </div>
+        )}
 
         <div style={{ background: '#1B3A6B', borderRadius: '16px', padding: '40px 48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>

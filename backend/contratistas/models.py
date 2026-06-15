@@ -3,10 +3,15 @@ from django.db import models
 from django.contrib.auth.models import User
 
 class Contratista(models.Model):
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
     nombre = models.CharField(max_length=100)
     oficio = models.CharField(max_length=100)
     telefono = models.CharField(max_length=20)
+    descripcion = models.TextField(blank=True)
+    comuna = models.CharField(max_length=100, blank=True)
+    experiencia = models.IntegerField(default=0)
     activo = models.BooleanField(default=True)
+    verificado = models.BooleanField(default=False)
     creado_en = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -91,3 +96,15 @@ class Trabajo(models.Model):
 
     def __str__(self):
         return f"{self.cliente} - {self.descripcion}"
+
+
+class SolicitudCotizacion(models.Model):
+    contratista = models.ForeignKey(Contratista, on_delete=models.CASCADE, related_name='solicitudes')
+    nombre_cliente = models.CharField(max_length=100)
+    telefono_cliente = models.CharField(max_length=20)
+    descripcion = models.TextField()
+    leida = models.BooleanField(default=False)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Solicitud de {self.nombre_cliente} para {self.contratista.nombre}"

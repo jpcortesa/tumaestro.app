@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .models import Contratista, Trabajo, Cliente, Cotizacion, ItemCotizacion
+from .models import Contratista, Trabajo, Cliente, Cotizacion, ItemCotizacion, SolicitudCotizacion
 from .serializers import ContratistaSerializer, TrabajoSerializer, ClienteSerializer, CotizacionSerializer, ItemCotizacionSerializer
 
 
@@ -53,9 +53,13 @@ class RegistroView(APIView):
         )
 
         Contratista.objects.create(
+            usuario=user,
             nombre=f'{nombre} {apellido}',
             oficio=oficio,
             telefono=telefono,
+            comuna=comuna,
+            experiencia=experiencia,
+            descripcion=descripcion,
             activo=True
         )
 
@@ -66,10 +70,20 @@ class PerfilView(APIView):
 
     def get(self, request):
         user = request.user
+        try:
+            contratista = Contratista.objects.get(usuario=user)
+            contratista_id = contratista.id
+            oficio = contratista.oficio
+        except Contratista.DoesNotExist:
+            contratista_id = None
+            oficio = None
+
         return Response({
             'nombre': f'{user.first_name} {user.last_name}'.strip(),
             'email': user.email,
             'username': user.username,
+            'contratista_id': contratista_id,
+            'oficio': oficio,
         })
 
 class TrabajosView(APIView):
@@ -188,6 +202,97 @@ class CotizacionDetalleView(APIView):
 # ENDPOINTS PÚBLICOS — sin autenticación
 
 @api_view(['GET'])
+def contratistas_publicos(request):
+    contratistas = Contratista.objects.filter(activo=True).order_by('-creado_en')
+    data = []
+    for c in contratistas:
+        data.append({
+            'id': c.id,
+            'nombre': c.nombre,
+            'oficio': c.oficio,
+            'comuna': c.comuna,
+            'experiencia': c.experiencia,
+            'descripcion': c.descripcion,
+            'verificado': c.verificado,
+        })
+    return Response(data)
+
+@api_view(['GET'])
+def contratista_publico(request, pk):
+    try:
+        c = Contratista.objects.get(pk=pk, activo=True)
+    except Contratista.DoesNotExist:
+        return Response({'error': 'No encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+    return Response({
+        'id': c.id,
+        'nombre': c.nombre,
+        'oficio': c.oficio,
+        'comuna': c.comuna,
+        'experiencia': c.experiencia,
+        'descripcion': c.descripcion,
+        'verificado': c.verificado,
+        'telefono': c.telefono,
+    })
+
+@api_view(['POST'])
+def solicitud_cotizacion(request, pk):
+    try:
+        contratista = Contratista.objects.get(pk=pk, activo=True)
+    except Contratista.DoesNotExist:
+        return Response({'error': 'Contratista no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+    nombre = request.data.get('nombre_cliente', '')
+    telefono = request.data.get('telefono_cliente', '')
+    descripcion = request.data.get('descripcion', '')
+
+    if not nombre or not telefono or not descripcion:
+        return Response({'error': 'Todos los campos son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
+
+    SolicitudCotizacion.objects.create(
+        contratista=contratista,
+        nombre_cliente=nombre,
+        telefono_cliente=telefono,
+        descripcion=descripcion
+    )
+
+    return Response({'mensaje': 'Solicitud enviada exitosamente'}, status=status.HTTP_201_CREATED)
+
+@api_view(['GET'])
+def mis_solicitudes(request):
+    if not request.user.is_authenticated:
+        return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+    try:
+        contratista = Contratista.objects.get(usuario=request.user)
+    except Contratista.DoesNotExist:
+        return Response([])
+
+    solicitudes = SolicitudCotizacion.objects.filter(contratista=contratista).order_by('-creado_en')
+    data = [{
+        'id': s.id,
+        'nombre_cliente': s.nombre_cliente,
+        'telefono_cliente': s.telefono_cliente,
+        'descripcion': s.descripcion,
+        'leida': s.leida,
+        'creado_en': s.creado_en,
+    } for s in solicitudes]
+    return Response(data)
+
+@api_view(['PATCH'])
+def marcar_solicitud_leida(request, pk):
+    if not request.user.is_authenticated:
+        return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+    try:
+        contratista = Contratista.objects.get(usuario=request.user)
+        solicitud = SolicitudCotizacion.objects.get(pk=pk, contratista=contratista)
+    except (Contratista.DoesNotExist, SolicitudCotizacion.DoesNotExist):
+        return Response({'error': 'No encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+    solicitud.leida = True
+    solicitud.save()
+    return Response({'mensaje': 'Marcada como leída'})
+
+@api_view(['GET'])
 def cotizacion_publica(request, token):
     try:
         cotizacion = Cotizacion.objects.get(token=token)
@@ -224,7 +329,6 @@ def cotizacion_publica(request, token):
             } for i in items
         ]
     })
-
 
 @api_view(['POST'])
 def cotizacion_responder(request, token):
