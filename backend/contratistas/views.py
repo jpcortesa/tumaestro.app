@@ -1,3 +1,5 @@
+import os
+import resend
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view
@@ -9,6 +11,83 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import Contratista, Trabajo, Cliente, Cotizacion, ItemCotizacion, SolicitudCotizacion
 from .serializers import ContratistaSerializer, TrabajoSerializer, ClienteSerializer, CotizacionSerializer, ItemCotizacionSerializer
 
+resend.api_key = os.environ.get('RESEND_API_KEY', '')
+
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://tumaestro.app')
+
+
+# HELPERS DE EMAIL
+
+def enviar_email_solicitud_maestro(contratista, solicitud):
+    if not contratista.usuario or not contratista.usuario.email:
+        return
+    try:
+        resend.Emails.send({
+            "from": "tumaestro.app <notificaciones@tumaestro.app>",
+            "to": contratista.usuario.email,
+            "subject": f"📩 Nueva solicitud de {solicitud.nombre_cliente}",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+                <h2 style="color: #1B3A6B;">Nueva solicitud de cotización</h2>
+                <p>Hola <strong>{contratista.nombre}</strong>,</p>
+                <p>Tienes una nueva solicitud de cotización en tumaestro.app:</p>
+                <div style="background: #F8F9FA; border-radius: 8px; padding: 16px; margin: 16px 0; border-left: 4px solid #F97316;">
+                    <p style="margin: 4px 0;"><strong>Cliente:</strong> {solicitud.nombre_cliente}</p>
+                    <p style="margin: 4px 0;"><strong>Teléfono:</strong> {solicitud.telefono_cliente}</p>
+                    {"<p style='margin: 4px 0;'><strong>Email:</strong> " + solicitud.email_cliente + "</p>" if solicitud.email_cliente else ""}
+                    <p style="margin: 8px 0 4px;"><strong>Descripción:</strong></p>
+                    <p style="margin: 0; color: #374151;">{solicitud.descripcion}</p>
+                </div>
+                <a href="{FRONTEND_URL}/panel" style="display: inline-block; background: #F97316; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 8px;">
+                    Ver en mi panel →
+                </a>
+                <p style="color: #9CA3AF; font-size: 12px; margin-top: 32px; border-top: 1px solid #E5E7EB; padding-top: 16px;">
+                    tumaestro.app — La plataforma para contratistas independientes en Chile
+                </p>
+            </div>
+            """
+        })
+    except Exception as e:
+        print(f"Error enviando email al maestro: {e}")
+
+
+def enviar_email_cotizacion_cliente(cotizacion, link):
+    if not cotizacion.cliente.email:
+        return
+    try:
+        cliente = cotizacion.cliente
+        contratista_nombre = f'{cotizacion.usuario.first_name} {cotizacion.usuario.last_name}'.strip()
+        monto_formateado = f"{cotizacion.monto:,}".replace(",", ".")
+        resend.Emails.send({
+            "from": "tumaestro.app <notificaciones@tumaestro.app>",
+            "to": cliente.email,
+            "subject": f"📋 Cotización de {contratista_nombre} lista para revisar",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+                <h2 style="color: #1B3A6B;">Tienes una cotización lista</h2>
+                <p>Hola <strong>{cliente.nombre}</strong>,</p>
+                <p><strong>{contratista_nombre}</strong> te ha enviado una cotización por el trabajo solicitado.</p>
+                <div style="background: #F8F9FA; border-radius: 8px; padding: 16px; margin: 16px 0; border-left: 4px solid #1B3A6B;">
+                    <p style="margin: 4px 0;"><strong>Descripción:</strong> {cotizacion.descripcion}</p>
+                    <p style="margin: 4px 0; font-size: 18px;"><strong>Total: ${monto_formateado}</strong></p>
+                </div>
+                <a href="{link}" style="display: inline-block; background: #1B3A6B; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 8px; font-size: 15px;">
+                    Ver y responder cotización →
+                </a>
+                <p style="color: #6B7280; font-size: 13px; margin-top: 16px;">
+                    Desde el link puedes aprobar o rechazar esta cotización.
+                </p>
+                <p style="color: #9CA3AF; font-size: 12px; margin-top: 32px; border-top: 1px solid #E5E7EB; padding-top: 16px;">
+                    tumaestro.app — La plataforma para contratistas independientes en Chile
+                </p>
+            </div>
+            """
+        })
+    except Exception as e:
+        print(f"Error enviando email al cliente: {e}")
+
+
+# CLASES Y VISTAS
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
@@ -195,6 +274,9 @@ class CotizacionDetalleView(APIView):
             serializer.save()
             if nuevo_estado == 'aprobada':
                 cotizacion.aprobar()
+            if nuevo_estado == 'enviada':
+                link = f"{FRONTEND_URL}/cotizacion/{cotizacion.token}"
+                enviar_email_cotizacion_cliente(cotizacion, link)
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -250,13 +332,15 @@ def solicitud_cotizacion(request, pk):
     if not nombre or not telefono or not descripcion:
         return Response({'error': 'Nombre, teléfono y descripción son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
 
-    SolicitudCotizacion.objects.create(
+    solicitud = SolicitudCotizacion.objects.create(
         contratista=contratista,
         nombre_cliente=nombre,
         telefono_cliente=telefono,
         email_cliente=email,
         descripcion=descripcion
     )
+
+    enviar_email_solicitud_maestro(contratista, solicitud)
 
     return Response({'mensaje': 'Solicitud enviada exitosamente'}, status=status.HTTP_201_CREATED)
 
