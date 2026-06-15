@@ -17,12 +17,6 @@ const estadoColor = {
   'Cotizacion': { bg: '#F3F4F6', color: '#374151' },
 }
 
-const estadoColorReal = {
-  pendiente: { bg: '#EEF2FF', color: '#3730A3' },
-  en_progreso: { bg: '#FEF3C7', color: '#92400E' },
-  completado: { bg: '#ECFDF5', color: '#065F46' },
-}
-
 const estadoColorCotizacion = {
   borrador: { bg: '#F3F4F6', color: '#374151' },
   enviada: { bg: '#EEF2FF', color: '#3730A3' },
@@ -53,18 +47,15 @@ export default function Panel() {
   const [usuario, setUsuario] = useState({ nombre: '', email: '' })
   const [seccion, setSeccion] = useState('dashboard')
 
-  // Trabajos
   const [trabajosReal, setTrabajosReal] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ cliente: '', descripcion: '', comuna: '', monto: '', fecha: '', estado: 'pendiente' })
 
-  // Clientes
   const [clientesReal, setClientesReal] = useState([])
   const [showModalCliente, setShowModalCliente] = useState(false)
   const [formCliente, setFormCliente] = useState({ nombre: '', telefono: '', email: '', direccion: '', comuna: '' })
   const [clienteEditando, setClienteEditando] = useState(null)
 
-  // Cotizaciones
   const [cotizacionesReal, setCotizacionesReal] = useState([])
   const [showModalCotizacion, setShowModalCotizacion] = useState(false)
   const [formCotizacion, setFormCotizacion] = useState({ cliente: '', descripcion: '', detalle: '', incluye_iva: false, tipo_impuesto: 'ninguno' })
@@ -74,7 +65,6 @@ export default function Panel() {
   const [showModalLink, setShowModalLink] = useState(false)
   const [copiado, setCopiado] = useState(false)
 
-  // Solicitudes
   const [solicitudes, setSolicitudes] = useState([])
   const [solicitudesNoLeidas, setSolicitudesNoLeidas] = useState(0)
 
@@ -88,13 +78,9 @@ export default function Panel() {
         if (data) {
           setUsuario(data)
           setAutorizado(true)
-          // Cargar solicitudes al iniciar
           fetch(`${API}/api/mis-solicitudes/`, { headers: { 'Authorization': `Bearer ${token}` } })
             .then(r => r.json())
-            .then(s => {
-              setSolicitudes(s)
-              setSolicitudesNoLeidas(s.filter(x => !x.leida).length)
-            })
+            .then(s => { setSolicitudes(s); setSolicitudesNoLeidas(s.filter(x => !x.leida).length) })
         }
       })
       .catch(() => window.location.replace('/login'))
@@ -307,7 +293,7 @@ export default function Panel() {
               {seccion === 'resenas' && 'Reseñas'}
               {seccion === 'configuracion' && 'Configuración'}
             </h1>
-            <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Viernes 13 de junio, 2026</p>
+            <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Lunes 15 de junio, 2026</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
@@ -421,7 +407,8 @@ export default function Panel() {
                       <span style={{ fontWeight: 600, fontSize: '14px', color: '#111827' }}>{s.nombre_cliente}</span>
                       {!s.leida && <span style={{ fontSize: '11px', color: '#F97316', fontWeight: 600 }}>● Nueva</span>}
                     </div>
-                    <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 4px' }}>{s.telefono_cliente}</p>
+                    <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 4px' }}>📞 {s.telefono_cliente}</p>
+                    {s.email_cliente && <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 4px' }}>✉️ {s.email_cliente}</p>}
                     <p style={{ fontSize: '13px', color: '#374151', margin: 0 }}>{s.descripcion.slice(0, 80)}{s.descripcion.length > 80 ? '...' : ''}</p>
                   </div>
                 ))}
@@ -451,15 +438,18 @@ export default function Panel() {
                       {s.leida ? '👤' : '🔔'}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
                         <span style={{ fontWeight: 700, fontSize: '16px', color: '#111827' }}>{s.nombre_cliente}</span>
                         {!s.leida && <span style={{ background: '#F97316', color: '#fff', fontSize: '11px', fontWeight: 700, borderRadius: '999px', padding: '2px 8px' }}>Nueva</span>}
                       </div>
-                      <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 8px' }}>📞 {s.telefono_cliente}</p>
+                      <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 4px' }}>📞 {s.telefono_cliente}</p>
+                      {s.email_cliente && <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 8px' }}>✉️ {s.email_cliente}</p>}
                       <p style={{ fontSize: '14px', color: '#374151', lineHeight: '1.6', margin: '0 0 12px' }}>{s.descripcion}</p>
-                      <p style={{ fontSize: '12px', color: '#9CA3AF', margin: 0 }}>{new Date(s.creado_en).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                      <p style={{ fontSize: '12px', color: '#9CA3AF', margin: 0 }}>
+                        {new Date(s.creado_en).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </p>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
+                    <div style={{ flexShrink: 0 }}>
                       {!s.leida && (
                         <button onClick={() => marcarLeida(s.id)} style={{ background: 'none', border: '1px solid #E5E7EB', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#6B7280' }}>
                           Marcar leída

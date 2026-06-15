@@ -19,7 +19,7 @@ export default function PerfilContratista() {
   const params = useParams()
   const [contratista, setContratista] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [formSolicitud, setFormSolicitud] = useState({ nombre_cliente: '', telefono_cliente: '', descripcion: '' })
+  const [formSolicitud, setFormSolicitud] = useState({ nombre_cliente: '', telefono_cliente: '', email_cliente: '', descripcion: '' })
   const [enviado, setEnviado] = useState(false)
   const [enviando, setEnviando] = useState(false)
 
@@ -34,7 +34,7 @@ export default function PerfilContratista() {
 
   async function enviarSolicitud() {
     if (!formSolicitud.nombre_cliente || !formSolicitud.telefono_cliente || !formSolicitud.descripcion) {
-      alert('Por favor completa todos los campos')
+      alert('Por favor completa nombre, teléfono y descripción')
       return
     }
     setEnviando(true)
@@ -76,7 +76,6 @@ export default function PerfilContratista() {
 
           {/* COLUMNA IZQUIERDA */}
           <div>
-            {/* PERFIL HEADER */}
             <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '32px', marginBottom: '24px' }}>
               <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
                 <div style={{ width: '88px', height: '88px', borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '700', fontSize: '28px', flexShrink: 0 }}>
@@ -108,7 +107,6 @@ export default function PerfilContratista() {
               </div>
             </div>
 
-            {/* SOBRE MI */}
             <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '28px', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Sobre mi</h2>
               <p style={{ fontSize: '15px', color: '#374151', lineHeight: '1.7' }}>
@@ -116,7 +114,6 @@ export default function PerfilContratista() {
               </p>
             </div>
 
-            {/* RESEÑAS — por ahora placeholder */}
             <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '28px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '20px' }}>Reseñas verificadas</h2>
               <p style={{ color: '#9CA3AF', fontSize: '14px' }}>Aún no hay reseñas para este profesional.</p>
@@ -133,7 +130,7 @@ export default function PerfilContratista() {
                   <p style={{ fontSize: '14px', color: '#6B7280', lineHeight: '1.6' }}>
                     {contratista.nombre} recibirá tu solicitud y se pondrá en contacto contigo pronto.
                   </p>
-                  <button onClick={() => { setEnviado(false); setFormSolicitud({ nombre_cliente: '', telefono_cliente: '', descripcion: '' }) }}
+                  <button onClick={() => { setEnviado(false); setFormSolicitud({ nombre_cliente: '', telefono_cliente: '', email_cliente: '', descripcion: '' }) }}
                     style={{ marginTop: '16px', background: 'none', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontSize: '13px', color: '#6B7280' }}>
                     Enviar otra solicitud
                   </button>
@@ -144,24 +141,32 @@ export default function PerfilContratista() {
                   <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '20px' }}>Gratis y sin compromiso</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
                     <input
-                      placeholder="Tu nombre"
+                      placeholder="Tu nombre *"
                       value={formSolicitud.nombre_cliente}
                       onChange={e => setFormSolicitud({ ...formSolicitud, nombre_cliente: e.target.value })}
                       style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '12px', fontSize: '14px', outline: 'none', width: '100%', boxSizing: 'border-box' }}
                     />
                     <input
-                      placeholder="Tu teléfono"
+                      placeholder="Tu teléfono *"
                       value={formSolicitud.telefono_cliente}
                       onChange={e => setFormSolicitud({ ...formSolicitud, telefono_cliente: e.target.value })}
                       style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '12px', fontSize: '14px', outline: 'none', width: '100%', boxSizing: 'border-box' }}
                     />
+                    <input
+                      placeholder="Tu email (opcional)"
+                      type="email"
+                      value={formSolicitud.email_cliente}
+                      onChange={e => setFormSolicitud({ ...formSolicitud, email_cliente: e.target.value })}
+                      style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '12px', fontSize: '14px', outline: 'none', width: '100%', boxSizing: 'border-box' }}
+                    />
                     <textarea
-                      placeholder="Describe el trabajo que necesitas..."
+                      placeholder="Describe el trabajo que necesitas... *"
                       rows={4}
                       value={formSolicitud.descripcion}
                       onChange={e => setFormSolicitud({ ...formSolicitud, descripcion: e.target.value })}
                       style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '12px', fontSize: '14px', outline: 'none', width: '100%', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
                     />
+                    <p style={{ fontSize: '12px', color: '#9CA3AF', margin: 0 }}>* Campos obligatorios</p>
                   </div>
                   <button
                     onClick={enviarSolicitud}
