@@ -244,15 +244,17 @@ def solicitud_cotizacion(request, pk):
 
     nombre = request.data.get('nombre_cliente', '')
     telefono = request.data.get('telefono_cliente', '')
+    email = request.data.get('email_cliente', '')
     descripcion = request.data.get('descripcion', '')
 
     if not nombre or not telefono or not descripcion:
-        return Response({'error': 'Todos los campos son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Nombre, teléfono y descripción son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
 
     SolicitudCotizacion.objects.create(
         contratista=contratista,
         nombre_cliente=nombre,
         telefono_cliente=telefono,
+        email_cliente=email,
         descripcion=descripcion
     )
 
@@ -272,6 +274,7 @@ def mis_solicitudes(request):
         'id': s.id,
         'nombre_cliente': s.nombre_cliente,
         'telefono_cliente': s.telefono_cliente,
+        'email_cliente': s.email_cliente,
         'descripcion': s.descripcion,
         'leida': s.leida,
         'creado_en': s.creado_en,

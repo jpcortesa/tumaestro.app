@@ -102,6 +102,7 @@ class SolicitudCotizacion(models.Model):
     contratista = models.ForeignKey(Contratista, on_delete=models.CASCADE, related_name='solicitudes')
     nombre_cliente = models.CharField(max_length=100)
     telefono_cliente = models.CharField(max_length=20)
+    email_cliente = models.EmailField(blank=True)
     descripcion = models.TextField()
     leida = models.BooleanField(default=False)
     creado_en = models.DateTimeField(auto_now_add=True)
