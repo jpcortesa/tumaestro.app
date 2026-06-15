@@ -40,15 +40,6 @@ const comunas = [
   'Santiago Centro', 'Vitacura', 'Puente Alto', 'San Bernardo'
 ]
 
-const menuItems = [
-  { icon: '▣', label: 'Dashboard', key: 'dashboard' },
-  { icon: '⚒', label: 'Trabajos', key: 'trabajos' },
-  { icon: '📋', label: 'Cotizaciones', key: 'cotizaciones' },
-  { icon: '👥', label: 'Clientes', key: 'clientes' },
-  { icon: '★', label: 'Resenas', key: 'resenas' },
-  { icon: '⚙', label: 'Configuracion', key: 'configuracion' },
-]
-
 const itemVacio = () => ({ descripcion: '', cantidad: 1, precio_unitario: '' })
 
 const TIPOS_IMPUESTO = [
@@ -83,13 +74,29 @@ export default function Panel() {
   const [showModalLink, setShowModalLink] = useState(false)
   const [copiado, setCopiado] = useState(false)
 
+  // Solicitudes
+  const [solicitudes, setSolicitudes] = useState([])
+  const [solicitudesNoLeidas, setSolicitudesNoLeidas] = useState(0)
+
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) { window.location.replace('/login'); return }
     const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
     fetch(`${API}/api/perfil/`, { headers: { 'Authorization': `Bearer ${token}` } })
       .then(res => { if (!res.ok) { localStorage.removeItem('token'); window.location.replace('/login'); return } return res.json() })
-      .then(data => { if (data) { setUsuario(data); setAutorizado(true) } })
+      .then(data => {
+        if (data) {
+          setUsuario(data)
+          setAutorizado(true)
+          // Cargar solicitudes al iniciar
+          fetch(`${API}/api/mis-solicitudes/`, { headers: { 'Authorization': `Bearer ${token}` } })
+            .then(r => r.json())
+            .then(s => {
+              setSolicitudes(s)
+              setSolicitudesNoLeidas(s.filter(x => !x.leida).length)
+            })
+        }
+      })
       .catch(() => window.location.replace('/login'))
   }, [])
 
@@ -196,6 +203,18 @@ export default function Panel() {
     setTimeout(() => setCopiado(false), 2000)
   }
 
+  async function fetchSolicitudes() {
+    const res = await fetch(`${API}/api/mis-solicitudes/`, { headers: { 'Authorization': `Bearer ${token()}` } })
+    const data = await res.json()
+    setSolicitudes(data)
+    setSolicitudesNoLeidas(data.filter(x => !x.leida).length)
+  }
+
+  async function marcarLeida(id) {
+    await fetch(`${API}/api/mis-solicitudes/${id}/leer/`, { method: 'PATCH', headers: headers() })
+    fetchSolicitudes()
+  }
+
   const cerrarSesion = () => {
     localStorage.removeItem('token'); localStorage.removeItem('refresh'); window.location.href = '/'
   }
@@ -218,6 +237,16 @@ export default function Panel() {
   const inputStyle = { width: '100%', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '8px 12px', marginTop: '4px', boxSizing: 'border-box', fontSize: '14px' }
   const labelStyle = { fontSize: '13px', color: '#6B7280', fontWeight: 500 }
   const btnEditar = { background: 'none', border: '1px solid #E5E7EB', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#1B3A6B' }
+
+  const menuItems = [
+    { icon: '▣', label: 'Dashboard', key: 'dashboard' },
+    { icon: '📩', label: 'Solicitudes', key: 'solicitudes', badge: solicitudesNoLeidas },
+    { icon: '⚒', label: 'Trabajos', key: 'trabajos' },
+    { icon: '📋', label: 'Cotizaciones', key: 'cotizaciones' },
+    { icon: '👥', label: 'Clientes', key: 'clientes' },
+    { icon: '★', label: 'Resenas', key: 'resenas' },
+    { icon: '⚙', label: 'Configuracion', key: 'configuracion' },
+  ]
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#F8F9FA' }}>
@@ -242,9 +271,13 @@ export default function Panel() {
                 if (item.key === 'trabajos') fetchTrabajos()
                 if (item.key === 'clientes') fetchClientes()
                 if (item.key === 'cotizaciones') { fetchCotizaciones(); fetchClientes() }
+                if (item.key === 'solicitudes') fetchSolicitudes()
               }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', background: seccion === item.key ? 'rgba(255,255,255,0.15)' : 'transparent' }}>
                 <span style={{ fontSize: '16px' }}>{item.icon}</span>
-                <span style={{ color: seccion === item.key ? '#fff' : '#93C5FD', fontSize: '14px', fontWeight: seccion === item.key ? '500' : '400' }}>{item.label}</span>
+                <span style={{ color: seccion === item.key ? '#fff' : '#93C5FD', fontSize: '14px', fontWeight: seccion === item.key ? '500' : '400', flex: 1 }}>{item.label}</span>
+                {item.badge > 0 && (
+                  <span style={{ background: '#F97316', color: '#fff', fontSize: '11px', fontWeight: 700, borderRadius: '999px', padding: '2px 7px', minWidth: '18px', textAlign: 'center' }}>{item.badge}</span>
+                )}
               </div>
             ))}
           </nav>
@@ -267,6 +300,7 @@ export default function Panel() {
           <div>
             <h1 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', margin: 0 }}>
               {seccion === 'dashboard' && `Bienvenido, ${usuario.nombre ? usuario.nombre.split(' ')[0] : 'Contratista'}`}
+              {seccion === 'solicitudes' && 'Solicitudes de clientes'}
               {seccion === 'trabajos' && 'Mis Trabajos'}
               {seccion === 'cotizaciones' && 'Cotizaciones'}
               {seccion === 'clientes' && 'Clientes'}
@@ -292,11 +326,11 @@ export default function Panel() {
                 <h2 style={{ fontWeight: 700, color: '#1B3A6B', margin: '0 0 8px' }}>Cotización enviada</h2>
                 <p style={{ color: '#6B7280', fontSize: '14px', margin: 0 }}>Comparte este link con tu cliente para que pueda aprobar o rechazar la cotización.</p>
               </div>
-              <div style={{ background: '#F8F9FA', borderRadius: '8px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '13px', color: '#374151', flex: 1, wordBreak: 'break-all' }}>{linkCotizacion}</span>
+              <div style={{ background: '#F8F9FA', borderRadius: '8px', padding: '12px 16px' }}>
+                <span style={{ fontSize: '13px', color: '#374151', wordBreak: 'break-all' }}>{linkCotizacion}</span>
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={copiarLink} style={{ flex: 1, padding: '10px', background: copiado ? '#ECFDF5' : '#1B3A6B', color: copiado ? '#065F46' : 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px', transition: 'all 0.2s' }}>
+                <button onClick={copiarLink} style={{ flex: 1, padding: '10px', background: copiado ? '#ECFDF5' : '#1B3A6B', color: copiado ? '#065F46' : 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
                   {copiado ? '✓ ¡Copiado!' : '📋 Copiar link'}
                 </button>
                 <button onClick={() => window.open(linkCotizacion, '_blank')} style={{ flex: 1, padding: '10px', background: 'none', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', color: '#374151' }}>
@@ -318,7 +352,7 @@ export default function Panel() {
                 { label: 'Trabajos activos', valor: '3', icono: '⚒', color: '#EEF2FF', texto: '#1B3A6B' },
                 { label: 'Cotizaciones pendientes', valor: '2', icono: '📋', color: '#FEF3C7', texto: '#92400E' },
                 { label: 'Ingresos del mes', valor: '$285.000', icono: '💰', color: '#ECFDF5', texto: '#065F46' },
-                { label: 'Rating promedio', valor: '4.9★', icono: '★', color: '#FFF7ED', texto: '#C2410C' },
+                { label: 'Solicitudes nuevas', valor: String(solicitudesNoLeidas), icono: '📩', color: '#FFF7ED', texto: '#C2410C' },
               ].map(m => (
                 <div key={m.label} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '12px', padding: '20px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -375,26 +409,67 @@ export default function Panel() {
                 </div>
               </div>
               <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px' }}>
-                <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Resenas recientes</h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {[
-                    { nombre: 'Maria G.', rating: 5, comentario: 'Excelente trabajo, muy puntual.', iniciales: 'MG', color: '#7C3AED' },
-                    { nombre: 'Roberto S.', rating: 5, comentario: 'Segunda vez que lo contrato, siempre perfecto.', iniciales: 'RS', color: '#0F6E56' },
-                  ].map((r, i) => (
-                    <div key={i} style={{ padding: '12px', background: '#F8F9FA', borderRadius: '10px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: r.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '11px', fontWeight: '600' }}>{r.iniciales}</div>
-                        <div>
-                          <p style={{ fontSize: '13px', fontWeight: '500', margin: 0 }}>{r.nombre}</p>
-                          <span style={{ color: '#F97316', fontSize: '12px' }}>{'★'.repeat(r.rating)}</span>
-                        </div>
-                      </div>
-                      <p style={{ fontSize: '13px', color: '#374151', margin: 0 }}>{r.comentario}</p>
-                    </div>
-                  ))}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>Solicitudes recientes</h2>
+                  {solicitudesNoLeidas > 0 && <span style={{ background: '#F97316', color: '#fff', fontSize: '11px', fontWeight: 700, borderRadius: '999px', padding: '2px 8px' }}>{solicitudesNoLeidas} nuevas</span>}
                 </div>
+                {solicitudes.length === 0 ? (
+                  <p style={{ fontSize: '13px', color: '#9CA3AF' }}>No hay solicitudes aún.</p>
+                ) : solicitudes.slice(0, 3).map(s => (
+                  <div key={s.id} style={{ padding: '12px', background: s.leida ? '#F8F9FA' : '#FFF7ED', borderRadius: '10px', marginBottom: '8px', border: s.leida ? 'none' : '1px solid #FED7AA' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontWeight: 600, fontSize: '14px', color: '#111827' }}>{s.nombre_cliente}</span>
+                      {!s.leida && <span style={{ fontSize: '11px', color: '#F97316', fontWeight: 600 }}>● Nueva</span>}
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 4px' }}>{s.telefono_cliente}</p>
+                    <p style={{ fontSize: '13px', color: '#374151', margin: 0 }}>{s.descripcion.slice(0, 80)}{s.descripcion.length > 80 ? '...' : ''}</p>
+                  </div>
+                ))}
+                {solicitudes.length > 0 && (
+                  <button onClick={() => { setSeccion('solicitudes'); fetchSolicitudes() }} style={{ background: 'none', border: 'none', color: '#1B3A6B', fontSize: '13px', cursor: 'pointer', padding: 0, marginTop: '8px' }}>
+                    Ver todas →
+                  </button>
+                )}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* SECCIÓN SOLICITUDES */}
+        {seccion === 'solicitudes' && (
+          <div style={{ padding: '32px' }}>
+            {solicitudes.length === 0 ? (
+              <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '4rem', textAlign: 'center' }}>
+                <div style={{ fontSize: '40px', marginBottom: '16px' }}>📩</div>
+                <p style={{ color: '#6B7280', fontSize: '16px' }}>No hay solicitudes aún. Cuando un cliente te contacte desde tu perfil público, aparecerá aquí.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {solicitudes.map(s => (
+                  <div key={s.id} style={{ background: '#fff', border: `1px solid ${s.leida ? '#E5E7EB' : '#FED7AA'}`, borderRadius: '16px', padding: '24px', display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: s.leida ? '#F3F4F6' : '#FFF7ED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
+                      {s.leida ? '👤' : '🔔'}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
+                        <span style={{ fontWeight: 700, fontSize: '16px', color: '#111827' }}>{s.nombre_cliente}</span>
+                        {!s.leida && <span style={{ background: '#F97316', color: '#fff', fontSize: '11px', fontWeight: 700, borderRadius: '999px', padding: '2px 8px' }}>Nueva</span>}
+                      </div>
+                      <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 8px' }}>📞 {s.telefono_cliente}</p>
+                      <p style={{ fontSize: '14px', color: '#374151', lineHeight: '1.6', margin: '0 0 12px' }}>{s.descripcion}</p>
+                      <p style={{ fontSize: '12px', color: '#9CA3AF', margin: 0 }}>{new Date(s.creado_en).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
+                      {!s.leida && (
+                        <button onClick={() => marcarLeida(s.id)} style={{ background: 'none', border: '1px solid #E5E7EB', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#6B7280' }}>
+                          Marcar leída
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -583,7 +658,6 @@ export default function Panel() {
                 </tbody>
               </table>
             </div>
-
             {showModalCotizacion && (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, overflowY: 'auto', padding: '24px' }}>
                 <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '600px', display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '90vh', overflowY: 'auto' }}>
