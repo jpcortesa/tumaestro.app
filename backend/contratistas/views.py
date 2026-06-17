@@ -23,7 +23,7 @@ def enviar_email_solicitud_maestro(contratista, solicitud):
         return
     try:
         resend.Emails.send({
-            "from": "tumaestro.app <notificaciones@tumaestro.app>",
+            "from": "tumaestro.app <noreply@tumaestro.app>",
             "to": contratista.usuario.email,
             "subject": f"📩 Nueva solicitud de {solicitud.nombre_cliente}",
             "html": f"""
@@ -51,6 +51,34 @@ def enviar_email_solicitud_maestro(contratista, solicitud):
         print(f"Error enviando email al maestro: {e}")
 
 
+def enviar_email_confirmacion_cliente(solicitud):
+    if not solicitud.email_cliente:
+        return
+    try:
+        resend.Emails.send({
+            "from": "tumaestro.app <noreply@tumaestro.app>",
+            "to": solicitud.email_cliente,
+            "subject": "✅ Tu solicitud fue enviada - tumaestro.app",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+                <h2 style="color: #1B3A6B;">¡Solicitud enviada con éxito!</h2>
+                <p>Hola <strong>{solicitud.nombre_cliente}</strong>,</p>
+                <p>Tu solicitud fue recibida por <strong>{solicitud.contratista.nombre}</strong> y se pondrá en contacto contigo a la brevedad.</p>
+                <div style="background: #F8F9FA; border-radius: 8px; padding: 16px; margin: 16px 0; border-left: 4px solid #F97316;">
+                    <p style="margin: 4px 0;"><strong>Tu solicitud:</strong></p>
+                    <p style="margin: 4px 0; color: #374151;">{solicitud.descripcion}</p>
+                </div>
+                <p style="color: #6B7280; font-size: 14px;">El contratista puede contactarte por teléfono al <strong>{solicitud.telefono_cliente}</strong>.</p>
+                <p style="color: #9CA3AF; font-size: 12px; margin-top: 32px; border-top: 1px solid #E5E7EB; padding-top: 16px;">
+                    tumaestro.app — La plataforma para contratistas independientes en Chile
+                </p>
+            </div>
+            """
+        })
+    except Exception as e:
+        print(f"Error enviando confirmación al cliente: {e}")
+
+
 def enviar_email_cotizacion_cliente(cotizacion, link):
     if not cotizacion.cliente.email:
         return
@@ -59,7 +87,7 @@ def enviar_email_cotizacion_cliente(cotizacion, link):
         contratista_nombre = f'{cotizacion.usuario.first_name} {cotizacion.usuario.last_name}'.strip()
         monto_formateado = f"{cotizacion.monto:,}".replace(",", ".")
         resend.Emails.send({
-            "from": "tumaestro.app <notificaciones@tumaestro.app>",
+            "from": "tumaestro.app <noreply@tumaestro.app>",
             "to": cliente.email,
             "subject": f"📋 Cotización de {contratista_nombre} lista para revisar",
             "html": f"""
@@ -341,6 +369,7 @@ def solicitud_cotizacion(request, pk):
     )
 
     enviar_email_solicitud_maestro(contratista, solicitud)
+    enviar_email_confirmacion_cliente(solicitud)
 
     return Response({'mensaje': 'Solicitud enviada exitosamente'}, status=status.HTTP_201_CREATED)
 
