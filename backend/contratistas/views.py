@@ -114,6 +114,38 @@ def enviar_email_cotizacion_cliente(cotizacion, link):
         print(f"Error enviando email al cliente: {e}")
 
 
+def enviar_email_trabajo_iniciado(cotizacion):
+    if not cotizacion.cliente.email:
+        return
+    try:
+        cliente = cotizacion.cliente
+        contratista_nombre = f'{cotizacion.usuario.first_name} {cotizacion.usuario.last_name}'.strip()
+        resend.Emails.send({
+            "from": "tumaestro.app <noreply@tumaestro.app>",
+            "to": cliente.email,
+            "subject": f"🔨 ¡Tu trabajo está en camino! - tumaestro.app",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+                <h2 style="color: #1B3A6B;">¡Cotización aceptada con éxito!</h2>
+                <p>Hola <strong>{cliente.nombre}</strong>,</p>
+                <p>Hemos registrado tu aprobación. <strong>{contratista_nombre}</strong> se pondrá en contacto contigo a la brevedad para coordinar el inicio de los trabajos.</p>
+                <div style="background: #F8F9FA; border-radius: 8px; padding: 16px; margin: 16px 0; border-left: 4px solid #059669;">
+                    <p style="margin: 4px 0;"><strong>Trabajo:</strong> {cotizacion.descripcion}</p>
+                    <p style="margin: 4px 0;"><strong>Contratista:</strong> {contratista_nombre}</p>
+                </div>
+                <p style="color: #6B7280; font-size: 14px;">
+                    En breve recibirás una llamada o mensaje para coordinar los detalles y fecha de inicio.
+                </p>
+                <p style="color: #9CA3AF; font-size: 12px; margin-top: 32px; border-top: 1px solid #E5E7EB; padding-top: 16px;">
+                    tumaestro.app — La plataforma para contratistas independientes en Chile
+                </p>
+            </div>
+            """
+        })
+    except Exception as e:
+        print(f"Error enviando email trabajo iniciado: {e}")
+
+
 # CLASES Y VISTAS
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -480,6 +512,7 @@ def cotizacion_responder(request, token):
 
     if respuesta == 'aprobada':
         cotizacion.aprobar()
+        enviar_email_trabajo_iniciado(cotizacion)
     else:
         cotizacion.estado = 'rechazada'
         cotizacion.save()
