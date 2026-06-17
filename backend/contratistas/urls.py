@@ -7,7 +7,8 @@ from .views import (
     CotizacionesView, CotizacionDetalleView,
     cotizacion_publica, cotizacion_responder,
     contratistas_publicos, contratista_publico,
-    solicitud_cotizacion, mis_solicitudes, marcar_solicitud_leida
+    solicitud_cotizacion, mis_solicitudes,
+    marcar_solicitud_leida, descartar_solicitud
 )
 
 router = DefaultRouter()
@@ -29,4 +30,5 @@ urlpatterns = router.urls + [
     path('publico/contratistas/<int:pk>/solicitud/', solicitud_cotizacion),
     path('mis-solicitudes/', mis_solicitudes),
     path('mis-solicitudes/<int:pk>/leer/', marcar_solicitud_leida),
+    path('mis-solicitudes/<int:pk>/descartar/', descartar_solicitud),
 ]

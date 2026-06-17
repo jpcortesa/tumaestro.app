@@ -105,6 +105,7 @@ class SolicitudCotizacion(models.Model):
     email_cliente = models.EmailField(blank=True)
     descripcion = models.TextField()
     leida = models.BooleanField(default=False)
+    descartada = models.BooleanField(default=False)
     creado_en = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

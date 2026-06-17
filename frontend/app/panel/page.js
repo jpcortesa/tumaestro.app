@@ -67,6 +67,7 @@ export default function Panel() {
 
   const [solicitudes, setSolicitudes] = useState([])
   const [solicitudesNoLeidas, setSolicitudesNoLeidas] = useState(0)
+  const [filtroSolicitudes, setFiltroSolicitudes] = useState('activas')
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -80,7 +81,7 @@ export default function Panel() {
           setAutorizado(true)
           fetch(`${API}/api/mis-solicitudes/`, { headers: { 'Authorization': `Bearer ${token}` } })
             .then(r => r.json())
-            .then(s => { setSolicitudes(s); setSolicitudesNoLeidas(s.filter(x => !x.leida).length) })
+            .then(s => { setSolicitudes(s); setSolicitudesNoLeidas(s.filter(x => !x.leida && !x.descartada).length) })
         }
       })
       .catch(() => window.location.replace('/login'))
@@ -112,7 +113,12 @@ export default function Panel() {
 
   async function crearCliente() {
     const res = await fetch(`${API}/api/clientes/`, { method: 'POST', headers: headers(), body: JSON.stringify(formCliente) })
-    if (res.ok) { setShowModalCliente(false); setClienteEditando(null); setFormCliente({ nombre: '', telefono: '', email: '', direccion: '', comuna: '' }); fetchClientes() }
+    if (res.ok) {
+      setShowModalCliente(false)
+      setClienteEditando(null)
+      setFormCliente({ nombre: '', telefono: '', email: '', direccion: '', comuna: '' })
+      fetchClientes()
+    }
   }
 
   async function editarCliente() {
@@ -123,6 +129,12 @@ export default function Panel() {
   function abrirEditarCliente(c) {
     setFormCliente({ nombre: c.nombre, telefono: c.telefono, email: c.email, direccion: c.direccion, comuna: c.comuna })
     setClienteEditando(c.id)
+    setShowModalCliente(true)
+  }
+
+  function crearClienteDesdeSolicitud(s) {
+    setFormCliente({ nombre: s.nombre_cliente, telefono: s.telefono_cliente, email: s.email_cliente || '', direccion: '', comuna: '' })
+    setClienteEditando(null)
     setShowModalCliente(true)
   }
 
@@ -193,11 +205,16 @@ export default function Panel() {
     const res = await fetch(`${API}/api/mis-solicitudes/`, { headers: { 'Authorization': `Bearer ${token()}` } })
     const data = await res.json()
     setSolicitudes(data)
-    setSolicitudesNoLeidas(data.filter(x => !x.leida).length)
+    setSolicitudesNoLeidas(data.filter(x => !x.leida && !x.descartada).length)
   }
 
   async function marcarLeida(id) {
     await fetch(`${API}/api/mis-solicitudes/${id}/leer/`, { method: 'PATCH', headers: headers() })
+    fetchSolicitudes()
+  }
+
+  async function descartarSolicitud(id) {
+    await fetch(`${API}/api/mis-solicitudes/${id}/descartar/`, { method: 'PATCH', headers: headers() })
     fetchSolicitudes()
   }
 
@@ -223,6 +240,10 @@ export default function Panel() {
   const inputStyle = { width: '100%', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '8px 12px', marginTop: '4px', boxSizing: 'border-box', fontSize: '14px' }
   const labelStyle = { fontSize: '13px', color: '#6B7280', fontWeight: 500 }
   const btnEditar = { background: 'none', border: '1px solid #E5E7EB', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#1B3A6B' }
+
+  const solicitudesFiltradas = solicitudes.filter(s =>
+    filtroSolicitudes === 'todas' ? true : !s.descartada
+  )
 
   const menuItems = [
     { icon: '▣', label: 'Dashboard', key: 'dashboard' },
@@ -310,7 +331,7 @@ export default function Panel() {
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '40px', marginBottom: '8px' }}>📤</div>
                 <h2 style={{ fontWeight: 700, color: '#1B3A6B', margin: '0 0 8px' }}>Cotización enviada</h2>
-                <p style={{ color: '#6B7280', fontSize: '14px', margin: 0 }}>Comparte este link con tu cliente para que pueda aprobar o rechazar la cotización.</p>
+                <p style={{ color: '#6B7280', fontSize: '14px', margin: 0 }}>El cliente recibirá un email con el link para aprobar o rechazar la cotización.</p>
               </div>
               <div style={{ background: '#F8F9FA', borderRadius: '8px', padding: '12px 16px' }}>
                 <span style={{ fontSize: '13px', color: '#374151', wordBreak: 'break-all' }}>{linkCotizacion}</span>
@@ -326,6 +347,36 @@ export default function Panel() {
               <button onClick={() => setShowModalLink(false)} style={{ padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px', color: '#6B7280' }}>
                 Cerrar
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL CLIENTE */}
+        {showModalCliente && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '480px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <h2 style={{ fontWeight: 700, color: '#1B3A6B', margin: 0 }}>{clienteEditando ? 'Editar Cliente' : 'Nuevo Cliente'}</h2>
+              {!clienteEditando && formCliente.nombre && (
+                <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#92400E' }}>
+                  📩 Datos pre-llenados desde la solicitud — completa dirección y comuna
+                </div>
+              )}
+              <div><label style={labelStyle}>Nombre</label><input type="text" value={formCliente.nombre} onChange={e => setFormCliente({ ...formCliente, nombre: e.target.value })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>Teléfono</label><input type="text" value={formCliente.telefono} onChange={e => setFormCliente({ ...formCliente, telefono: e.target.value })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>Email</label><input type="email" value={formCliente.email} onChange={e => setFormCliente({ ...formCliente, email: e.target.value })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>Comuna</label>
+                <select value={formCliente.comuna} onChange={e => setFormCliente({ ...formCliente, comuna: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
+                  <option value="">Selecciona una comuna</option>
+                  {comunas.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div><label style={labelStyle}>Dirección</label><input type="text" value={formCliente.direccion} onChange={e => setFormCliente({ ...formCliente, direccion: e.target.value })} style={inputStyle} /></div>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                <button onClick={() => { setShowModalCliente(false); setClienteEditando(null); setFormCliente({ nombre: '', telefono: '', email: '', direccion: '', comuna: '' }) }} style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>Cancelar</button>
+                <button onClick={clienteEditando ? editarCliente : crearCliente} style={{ flex: 1, padding: '10px', background: '#F97316', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
+                  {clienteEditando ? 'Guardar cambios' : 'Guardar cliente'}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -399,9 +450,9 @@ export default function Panel() {
                   <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>Solicitudes recientes</h2>
                   {solicitudesNoLeidas > 0 && <span style={{ background: '#F97316', color: '#fff', fontSize: '11px', fontWeight: 700, borderRadius: '999px', padding: '2px 8px' }}>{solicitudesNoLeidas} nuevas</span>}
                 </div>
-                {solicitudes.length === 0 ? (
+                {solicitudes.filter(s => !s.descartada).length === 0 ? (
                   <p style={{ fontSize: '13px', color: '#9CA3AF' }}>No hay solicitudes aún.</p>
-                ) : solicitudes.slice(0, 3).map(s => (
+                ) : solicitudes.filter(s => !s.descartada).slice(0, 3).map(s => (
                   <div key={s.id} style={{ padding: '12px', background: s.leida ? '#F8F9FA' : '#FFF7ED', borderRadius: '10px', marginBottom: '8px', border: s.leida ? 'none' : '1px solid #FED7AA' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                       <span style={{ fontWeight: 600, fontSize: '14px', color: '#111827' }}>{s.nombre_cliente}</span>
@@ -412,7 +463,7 @@ export default function Panel() {
                     <p style={{ fontSize: '13px', color: '#374151', margin: 0 }}>{s.descripcion.slice(0, 80)}{s.descripcion.length > 80 ? '...' : ''}</p>
                   </div>
                 ))}
-                {solicitudes.length > 0 && (
+                {solicitudes.filter(s => !s.descartada).length > 0 && (
                   <button onClick={() => { setSeccion('solicitudes'); fetchSolicitudes() }} style={{ background: 'none', border: 'none', color: '#1B3A6B', fontSize: '13px', cursor: 'pointer', padding: 0, marginTop: '8px' }}>
                     Ver todas →
                   </button>
@@ -425,22 +476,31 @@ export default function Panel() {
         {/* SECCIÓN SOLICITUDES */}
         {seccion === 'solicitudes' && (
           <div style={{ padding: '32px' }}>
-            {solicitudes.length === 0 ? (
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+              {[{ key: 'activas', label: 'Activas' }, { key: 'todas', label: 'Todas' }].map(f => (
+                <button key={f.key} onClick={() => setFiltroSolicitudes(f.key)}
+                  style={{ padding: '8px 18px', borderRadius: '999px', fontSize: '14px', cursor: 'pointer', fontWeight: filtroSolicitudes === f.key ? 600 : 400, background: filtroSolicitudes === f.key ? '#1B3A6B' : '#fff', color: filtroSolicitudes === f.key ? '#fff' : '#374151', border: filtroSolicitudes === f.key ? 'none' : '1px solid #E5E7EB' }}>
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            {solicitudesFiltradas.length === 0 ? (
               <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '4rem', textAlign: 'center' }}>
                 <div style={{ fontSize: '40px', marginBottom: '16px' }}>📩</div>
                 <p style={{ color: '#6B7280', fontSize: '16px' }}>No hay solicitudes aún. Cuando un cliente te contacte desde tu perfil público, aparecerá aquí.</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {solicitudes.map(s => (
-                  <div key={s.id} style={{ background: '#fff', border: `1px solid ${s.leida ? '#E5E7EB' : '#FED7AA'}`, borderRadius: '16px', padding: '24px', display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: s.leida ? '#F3F4F6' : '#FFF7ED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
-                      {s.leida ? '👤' : '🔔'}
+                {solicitudesFiltradas.map(s => (
+                  <div key={s.id} style={{ background: '#fff', border: `1px solid ${s.descartada ? '#E5E7EB' : s.leida ? '#E5E7EB' : '#FED7AA'}`, borderRadius: '16px', padding: '24px', display: 'flex', gap: '24px', alignItems: 'flex-start', opacity: s.descartada ? 0.6 : 1 }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: s.descartada ? '#F3F4F6' : s.leida ? '#F3F4F6' : '#FFF7ED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
+                      {s.descartada ? '🗑' : s.leida ? '👤' : '🔔'}
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
                         <span style={{ fontWeight: 700, fontSize: '16px', color: '#111827' }}>{s.nombre_cliente}</span>
-                        {!s.leida && <span style={{ background: '#F97316', color: '#fff', fontSize: '11px', fontWeight: 700, borderRadius: '999px', padding: '2px 8px' }}>Nueva</span>}
+                        {!s.leida && !s.descartada && <span style={{ background: '#F97316', color: '#fff', fontSize: '11px', fontWeight: 700, borderRadius: '999px', padding: '2px 8px' }}>Nueva</span>}
+                        {s.descartada && <span style={{ background: '#F3F4F6', color: '#9CA3AF', fontSize: '11px', fontWeight: 600, borderRadius: '999px', padding: '2px 8px' }}>Descartada</span>}
                       </div>
                       <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 4px' }}>📞 {s.telefono_cliente}</p>
                       {s.email_cliente && <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 8px' }}>✉️ {s.email_cliente}</p>}
@@ -449,13 +509,21 @@ export default function Panel() {
                         {new Date(s.creado_en).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
-                    <div style={{ flexShrink: 0 }}>
-                      {!s.leida && (
-                        <button onClick={() => marcarLeida(s.id)} style={{ background: 'none', border: '1px solid #E5E7EB', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#6B7280' }}>
-                          Marcar leída
+                    {!s.descartada && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
+                        {!s.leida && (
+                          <button onClick={() => marcarLeida(s.id)} style={{ background: 'none', border: '1px solid #E5E7EB', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#6B7280' }}>
+                            Marcar leída
+                          </button>
+                        )}
+                        <button onClick={() => crearClienteDesdeSolicitud(s)} style={{ background: '#F97316', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#fff', fontWeight: 600 }}>
+                          + Crear cliente
                         </button>
-                      )}
-                    </div>
+                        <button onClick={() => { if (confirm('¿Descartar esta solicitud?')) descartarSolicitud(s.id) }} style={{ background: 'none', border: '1px solid #FCA5A5', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#EF4444' }}>
+                          Descartar
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -567,29 +635,6 @@ export default function Panel() {
                 </tbody>
               </table>
             </div>
-            {showModalCliente && (
-              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-                <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '480px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <h2 style={{ fontWeight: 700, color: '#1B3A6B', margin: 0 }}>{clienteEditando ? 'Editar Cliente' : 'Nuevo Cliente'}</h2>
-                  <div><label style={labelStyle}>Nombre</label><input type="text" value={formCliente.nombre} onChange={e => setFormCliente({ ...formCliente, nombre: e.target.value })} style={inputStyle} /></div>
-                  <div><label style={labelStyle}>Teléfono</label><input type="text" value={formCliente.telefono} onChange={e => setFormCliente({ ...formCliente, telefono: e.target.value })} style={inputStyle} /></div>
-                  <div><label style={labelStyle}>Email</label><input type="email" value={formCliente.email} onChange={e => setFormCliente({ ...formCliente, email: e.target.value })} style={inputStyle} /></div>
-                  <div><label style={labelStyle}>Comuna</label>
-                    <select value={formCliente.comuna} onChange={e => setFormCliente({ ...formCliente, comuna: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
-                      <option value="">Selecciona una comuna</option>
-                      {comunas.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div><label style={labelStyle}>Dirección</label><input type="text" value={formCliente.direccion} onChange={e => setFormCliente({ ...formCliente, direccion: e.target.value })} style={inputStyle} /></div>
-                  <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                    <button onClick={() => { setShowModalCliente(false); setClienteEditando(null) }} style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>Cancelar</button>
-                    <button onClick={clienteEditando ? editarCliente : crearCliente} style={{ flex: 1, padding: '10px', background: '#F97316', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
-                      {clienteEditando ? 'Guardar cambios' : 'Guardar'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -597,7 +642,7 @@ export default function Panel() {
         {seccion === 'cotizaciones' && (
           <div style={{ padding: '32px' }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
-              <button onClick={() => { setCotizacionEditando(null); setFormCotizacion({ cliente: '', descripcion: '', detalle: '', incluye_iva: false, tipo_impuesto: 'ninguno' }); setItems([itemVacio()]); setShowModalCotizacion(true) }}
+              <button onClick={() => { setCotizacionEditando(null); setFormCotizacion({ cliente: '', descripcion: '', detalle: '', incluye_iva: false, tipo_impuesto: 'ninguno' }); setItems([itemVacio()]); setShowModalCotizacion(true); fetchClientes() }}
                 style={{ background: '#F97316', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
                 + Nueva cotización
               </button>
@@ -648,6 +693,7 @@ export default function Panel() {
                 </tbody>
               </table>
             </div>
+
             {showModalCotizacion && (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, overflowY: 'auto', padding: '24px' }}>
                 <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '600px', display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '90vh', overflowY: 'auto' }}>

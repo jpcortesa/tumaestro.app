@@ -12,7 +12,6 @@ from .models import Contratista, Trabajo, Cliente, Cotizacion, ItemCotizacion, S
 from .serializers import ContratistaSerializer, TrabajoSerializer, ClienteSerializer, CotizacionSerializer, ItemCotizacionSerializer
 
 resend.api_key = os.environ.get('RESEND_API_KEY', '')
-
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://tumaestro.app')
 
 
@@ -382,7 +381,10 @@ def mis_solicitudes(request):
     except Contratista.DoesNotExist:
         return Response([])
 
-    solicitudes = SolicitudCotizacion.objects.filter(contratista=contratista).order_by('-creado_en')
+    solicitudes = SolicitudCotizacion.objects.filter(
+        contratista=contratista
+    ).order_by('-creado_en')
+
     data = [{
         'id': s.id,
         'nombre_cliente': s.nombre_cliente,
@@ -390,6 +392,7 @@ def mis_solicitudes(request):
         'email_cliente': s.email_cliente,
         'descripcion': s.descripcion,
         'leida': s.leida,
+        'descartada': s.descartada,
         'creado_en': s.creado_en,
     } for s in solicitudes]
     return Response(data)
@@ -407,6 +410,21 @@ def marcar_solicitud_leida(request, pk):
     solicitud.leida = True
     solicitud.save()
     return Response({'mensaje': 'Marcada como leída'})
+
+@api_view(['PATCH'])
+def descartar_solicitud(request, pk):
+    if not request.user.is_authenticated:
+        return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+    try:
+        contratista = Contratista.objects.get(usuario=request.user)
+        solicitud = SolicitudCotizacion.objects.get(pk=pk, contratista=contratista)
+    except (Contratista.DoesNotExist, SolicitudCotizacion.DoesNotExist):
+        return Response({'error': 'No encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+    solicitud.descartada = True
+    solicitud.leida = True
+    solicitud.save()
+    return Response({'mensaje': 'Solicitud descartada'})
 
 @api_view(['GET'])
 def cotizacion_publica(request, token):
