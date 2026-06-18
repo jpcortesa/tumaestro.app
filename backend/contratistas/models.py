@@ -56,6 +56,7 @@ class Cotizacion(models.Model):
         Trabajo.objects.create(
             usuario=self.usuario,
             cliente=self.cliente.nombre,
+            cliente_email=self.cliente.email,
             descripcion=self.descripcion,
             comuna=self.cliente.comuna,
             monto=self.monto,
@@ -86,6 +87,7 @@ class Trabajo(models.Model):
 
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trabajos')
     cliente = models.CharField(max_length=100)
+    cliente_email = models.EmailField(blank=True)
     descripcion = models.CharField(max_length=200)
     comuna = models.CharField(max_length=100)
     monto = models.IntegerField(default=0)
@@ -93,6 +95,7 @@ class Trabajo(models.Model):
     estado = models.CharField(max_length=20, choices=ESTADOS, default='pendiente')
     fecha = models.DateField(auto_now_add=True)
     creado_en = models.DateTimeField(auto_now_add=True)
+    token_resena = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
 
     def __str__(self):
         return f"{self.cliente} - {self.descripcion}"

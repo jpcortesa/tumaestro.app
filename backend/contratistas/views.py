@@ -148,18 +148,13 @@ def enviar_email_trabajo_iniciado(cotizacion):
 
 def enviar_email_trabajo_completado(trabajo):
     try:
-        cotizacion = Cotizacion.objects.filter(
-            usuario=trabajo.usuario,
-            cliente__nombre=trabajo.cliente,
-            estado='aprobada'
-        ).order_by('-creado_en').first()
-
-        if not cotizacion or not cotizacion.cliente.email:
+        cliente_email = trabajo.cliente_email
+        if not cliente_email:
             return
 
-        cliente_email = cotizacion.cliente.email
-        cliente_nombre = cotizacion.cliente.nombre
+        cliente_nombre = trabajo.cliente
         contratista_nombre = f'{trabajo.usuario.first_name} {trabajo.usuario.last_name}'.strip()
+        link = f"{FRONTEND_URL}/calificar/{trabajo.token_resena}"
 
         resend.Emails.send({
             "from": "tumaestro.app <noreply@tumaestro.app>",
@@ -177,7 +172,7 @@ def enviar_email_trabajo_completado(trabajo):
                 <p style="color: #374151; font-size: 15px; margin: 20px 0;">
                     Tu opinión es muy importante para otros clientes. ¿Puedes tomarte un momento para calificar el trabajo?
                 </p>
-                <a href="{FRONTEND_URL}/calificar/{trabajo.id}" style="display: inline-block; background: #F97316; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px; margin-bottom: 8px;">
+                <a href="{link}" style="display: inline-block; background: #F97316; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px; margin-bottom: 8px;">
                     ⭐ Calificar a {contratista_nombre} →
                 </a>
                 <p style="color: #6B7280; font-size: 13px; margin-top: 16px;">
@@ -605,24 +600,26 @@ def cotizacion_responder(request, token):
 
 
 @api_view(['GET', 'POST'])
-def calificar_trabajo(request, pk):
+def calificar_trabajo(request, token_resena):
     try:
-        trabajo = Trabajo.objects.get(pk=pk)
+        trabajo = Trabajo.objects.get(token_resena=token_resena)
     except Trabajo.DoesNotExist:
-        return Response({'error': 'Trabajo no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'error': 'Link no válido'}, status=status.HTTP_404_NOT_FOUND)
 
     if trabajo.estado != 'completado':
         return Response({'error': 'Este trabajo no puede ser calificado'}, status=status.HTTP_400_BAD_REQUEST)
 
+    try:
+        contratista = Contratista.objects.get(usuario=trabajo.usuario)
+    except Contratista.DoesNotExist:
+        return Response({'error': 'Contratista no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
     if request.method == 'GET':
         ya_calificado = Resena.objects.filter(trabajo=trabajo).exists()
-        try:
-            contratista = Contratista.objects.get(usuario=trabajo.usuario)
-        except Contratista.DoesNotExist:
-            return Response({'error': 'Contratista no encontrado'}, status=status.HTTP_404_NOT_FOUND)
         return Response({
             'ya_calificado': ya_calificado,
             'trabajo': trabajo.descripcion,
+            'cliente': trabajo.cliente,
             'contratista': contratista.nombre,
             'contratista_oficio': contratista.oficio,
         })
@@ -631,24 +628,16 @@ def calificar_trabajo(request, pk):
     if Resena.objects.filter(trabajo=trabajo).exists():
         return Response({'error': 'Este trabajo ya fue calificado'}, status=status.HTTP_400_BAD_REQUEST)
 
-    nombre_cliente = request.data.get('nombre_cliente', '').strip()
     rating = request.data.get('rating')
     comentario = request.data.get('comentario', '').strip()
 
-    if not nombre_cliente:
-        return Response({'error': 'El nombre es requerido'}, status=status.HTTP_400_BAD_REQUEST)
     if not rating or int(rating) not in [1, 2, 3, 4, 5]:
         return Response({'error': 'Rating debe ser entre 1 y 5'}, status=status.HTTP_400_BAD_REQUEST)
-
-    try:
-        contratista = Contratista.objects.get(usuario=trabajo.usuario)
-    except Contratista.DoesNotExist:
-        return Response({'error': 'Contratista no encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
     resena = Resena.objects.create(
         trabajo=trabajo,
         contratista=contratista,
-        nombre_cliente=nombre_cliente,
+        nombre_cliente=trabajo.cliente,
         rating=int(rating),
         comentario=comentario
     )

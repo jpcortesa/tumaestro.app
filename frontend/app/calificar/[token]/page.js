@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react'
 
 export default function CalificarTrabajo({ params }) {
-  const { id } = use(params)
+  const token = params?.token  // antes era id
   const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
   const [cargando, setCargando] = useState(true)
@@ -19,8 +19,8 @@ export default function CalificarTrabajo({ params }) {
   const [comentario, setComentario] = useState('')
 
   useEffect(() => {
-    if (!id) return
-    fetch(`${API}/api/trabajos/${id}/calificar/`)
+    if (!token) return
+    fetch(`${API}/api/trabajos/${token}/calificar/`)
       .then(res => res.json())
       .then(data => {
         if (data.error) { setError(data.error); setCargando(false); return }
@@ -29,13 +29,13 @@ export default function CalificarTrabajo({ params }) {
         setCargando(false)
       })
       .catch(() => { setError('No se pudo cargar la información'); setCargando(false) })
-  }, [id])
+  }, [token])
 
   async function enviarCalificacion() {
     if (!nombreCliente.trim()) { alert('Por favor ingresa tu nombre'); return }
     if (rating === 0) { alert('Por favor selecciona una calificación'); return }
     setEnviando(true)
-    const res = await fetch(`${API}/api/trabajos/${id}/calificar/`, {
+    const res = await fetch(`${API}/api/trabajos/${token}/calificar/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nombre_cliente: nombreCliente, rating, comentario })

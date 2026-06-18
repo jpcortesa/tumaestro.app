@@ -32,5 +32,5 @@ urlpatterns = router.urls + [
     path('mis-solicitudes/', mis_solicitudes),
     path('mis-solicitudes/<int:pk>/leer/', marcar_solicitud_leida),
     path('mis-solicitudes/<int:pk>/descartar/', descartar_solicitud),
-    path('trabajos/<int:pk>/calificar/', calificar_trabajo),
+    path('trabajos/<uuid:token_resena>/calificar/', calificar_trabajo),
 ]
