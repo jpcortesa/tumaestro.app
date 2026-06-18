@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 
 export default function CalificarTrabajo({ params }) {
-  const { id } = params
+  const id = params?.id
   const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
   const [cargando, setCargando] = useState(true)
@@ -19,6 +19,7 @@ export default function CalificarTrabajo({ params }) {
   const [comentario, setComentario] = useState('')
 
   useEffect(() => {
+    if (!id) return
     fetch(`${API}/api/trabajos/${id}/calificar/`)
       .then(res => res.json())
       .then(data => {
@@ -84,9 +85,7 @@ export default function CalificarTrabajo({ params }) {
         </p>
         <div style={{ background: '#F8F9FA', borderRadius: '10px', padding: '16px', marginBottom: '24px' }}>
           <p style={{ fontSize: '28px', margin: '0 0 4px' }}>{'⭐'.repeat(rating)}</p>
-          <p style={{ fontSize: '14px', color: '#374151', margin: 0, fontStyle: 'italic' }}>
-            {comentario ? `"${comentario}"` : ''}
-          </p>
+          {comentario && <p style={{ fontSize: '14px', color: '#374151', margin: 0, fontStyle: 'italic' }}>"{comentario}"</p>}
         </div>
         <a href="/" style={{ display: 'inline-block', background: '#1B3A6B', color: 'white', padding: '12px 28px', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, fontSize: '14px' }}>
           Ver más contratistas →
@@ -99,7 +98,6 @@ export default function CalificarTrabajo({ params }) {
     <div style={{ minHeight: '100vh', background: '#F8F9FA', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ background: '#fff', borderRadius: '16px', padding: '2.5rem', width: '100%', maxWidth: '480px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
 
-        {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <span style={{ color: '#1B3A6B', fontSize: '20px', fontWeight: '700' }}>
             tumaestro<span style={{ color: '#F97316' }}>.app</span>
@@ -112,7 +110,6 @@ export default function CalificarTrabajo({ params }) {
           </p>
         </div>
 
-        {/* Estrellas */}
         <div style={{ marginBottom: '1.5rem' }}>
           <label style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500, display: 'block', marginBottom: '10px' }}>
             Calificación *
@@ -137,7 +134,6 @@ export default function CalificarTrabajo({ params }) {
           )}
         </div>
 
-        {/* Nombre */}
         <div style={{ marginBottom: '1rem' }}>
           <label style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
             Tu nombre *
@@ -151,7 +147,6 @@ export default function CalificarTrabajo({ params }) {
           />
         </div>
 
-        {/* Comentario */}
         <div style={{ marginBottom: '1.5rem' }}>
           <label style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
             Comentario <span style={{ fontWeight: 400 }}>(opcional)</span>
