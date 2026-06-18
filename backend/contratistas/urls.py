@@ -9,7 +9,7 @@ from .views import (
     contratistas_publicos, contratista_publico,
     solicitud_cotizacion, mis_solicitudes,
     marcar_solicitud_leida, descartar_solicitud,
-    calificar_trabajo
+    calificar_trabajo, resenas_contratista, mis_resenas
 )
 
 router = DefaultRouter()
@@ -33,4 +33,6 @@ urlpatterns = router.urls + [
     path('mis-solicitudes/<int:pk>/leer/', marcar_solicitud_leida),
     path('mis-solicitudes/<int:pk>/descartar/', descartar_solicitud),
     path('trabajos/<uuid:token_resena>/calificar/', calificar_trabajo),
+    path('publico/contratistas/<int:pk>/resenas/', resenas_contratista),
+    path('mis-resenas/', mis_resenas),
 ]

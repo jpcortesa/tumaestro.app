@@ -69,6 +69,8 @@ export default function Panel() {
   const [solicitudesNoLeidas, setSolicitudesNoLeidas] = useState(0)
   const [filtroSolicitudes, setFiltroSolicitudes] = useState('activas')
 
+  const [resenas, setResenas] = useState({ promedio: null, total: 0, resenas: [] })
+
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) { window.location.replace('/login'); return }
@@ -218,6 +220,11 @@ export default function Panel() {
     fetchSolicitudes()
   }
 
+  async function fetchResenas() {
+    const res = await fetch(`${API}/api/mis-resenas/`, { headers: { 'Authorization': `Bearer ${token()}` } })
+    setResenas(await res.json())
+  }
+
   const cerrarSesion = () => {
     localStorage.removeItem('token'); localStorage.removeItem('refresh'); window.location.href = '/'
   }
@@ -279,6 +286,7 @@ export default function Panel() {
                 if (item.key === 'clientes') fetchClientes()
                 if (item.key === 'cotizaciones') { fetchCotizaciones(); fetchClientes() }
                 if (item.key === 'solicitudes') fetchSolicitudes()
+                if (item.key === 'resenas') fetchResenas()
               }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', background: seccion === item.key ? 'rgba(255,255,255,0.15)' : 'transparent' }}>
                 <span style={{ fontSize: '16px' }}>{item.icon}</span>
                 <span style={{ color: seccion === item.key ? '#fff' : '#93C5FD', fontSize: '14px', fontWeight: seccion === item.key ? '500' : '400', flex: 1 }}>{item.label}</span>
@@ -765,7 +773,61 @@ export default function Panel() {
           </div>
         )}
 
-        {['resenas', 'configuracion'].includes(seccion) && (
+        {/* SECCIÓN RESEÑAS */}
+        {seccion === 'resenas' && (
+          <div style={{ padding: '32px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px' }}>
+              <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '12px', padding: '20px', textAlign: 'center' }}>
+                <p style={{ fontSize: '36px', fontWeight: 700, color: '#F97316', margin: '0 0 4px' }}>
+                  {resenas.promedio ? `${resenas.promedio}★` : '—'}
+                </p>
+                <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Promedio general</p>
+              </div>
+              <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '12px', padding: '20px', textAlign: 'center' }}>
+                <p style={{ fontSize: '36px', fontWeight: 700, color: '#1B3A6B', margin: '0 0 4px' }}>{resenas.total}</p>
+                <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Reseñas recibidas</p>
+              </div>
+              <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '12px', padding: '20px', textAlign: 'center' }}>
+                <p style={{ fontSize: '36px', fontWeight: 700, color: '#059669', margin: '0 0 4px' }}>
+                  {resenas.total > 0 ? `${Math.round((resenas.resenas?.filter(r => r.rating >= 4).length / resenas.total) * 100)}%` : '—'}
+                </p>
+                <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Satisfacción (4-5★)</p>
+              </div>
+            </div>
+            {resenas.total === 0 ? (
+              <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '4rem', textAlign: 'center' }}>
+                <div style={{ fontSize: '40px', marginBottom: '16px' }}>⭐</div>
+                <p style={{ color: '#6B7280', fontSize: '16px' }}>Aún no tienes reseñas. Cuando completes trabajos y tus clientes califiquen, aparecerán aquí.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {resenas.resenas?.map((r, idx) => (
+                  <div key={idx} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '12px' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                          <span style={{ fontWeight: 700, fontSize: '15px', color: '#111827' }}>{r.nombre_cliente}</span>
+                          <span style={{ fontSize: '13px', color: '#6B7280' }}>· {r.trabajo}</span>
+                        </div>
+                        <span style={{ fontSize: '20px' }}>{'⭐'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
+                      </div>
+                      <span style={{ fontSize: '12px', color: '#9CA3AF' }}>
+                        {new Date(r.creado_en).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </span>
+                    </div>
+                    {r.comentario && (
+                      <p style={{ fontSize: '14px', color: '#374151', lineHeight: '1.6', margin: 0, fontStyle: 'italic' }}>
+                        "{r.comentario}"
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {seccion === 'configuracion' && (
           <div style={{ padding: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px' }}>
             <p style={{ color: '#6B7280', fontSize: '16px' }}>Sección en construcción 🚧</p>
           </div>

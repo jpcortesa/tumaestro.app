@@ -645,3 +645,54 @@ def calificar_trabajo(request, token_resena):
     enviar_email_resena_contratista(resena)
 
     return Response({'mensaje': 'Reseña enviada con éxito'}, status=status.HTTP_201_CREATED)
+
+@api_view(['GET'])
+def resenas_contratista(request, pk):
+    try:
+        contratista = Contratista.objects.get(pk=pk, activo=True)
+    except Contratista.DoesNotExist:
+        return Response({'error': 'No encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+    resenas = Resena.objects.filter(contratista=contratista).order_by('-creado_en')
+    total = resenas.count()
+    promedio = round(sum(r.rating for r in resenas) / total, 1) if total > 0 else None
+
+    data = {
+        'promedio': promedio,
+        'total': total,
+        'resenas': [{
+            'nombre_cliente': r.nombre_cliente,
+            'rating': r.rating,
+            'comentario': r.comentario,
+            'creado_en': r.creado_en,
+            'trabajo': r.trabajo.descripcion,
+        } for r in resenas]
+    }
+    return Response(data)
+
+@api_view(['GET'])
+def mis_resenas(request):
+    if not request.user.is_authenticated:
+        return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+    try:
+        contratista = Contratista.objects.get(usuario=request.user)
+    except Contratista.DoesNotExist:
+        return Response([])
+
+    resenas = Resena.objects.filter(contratista=contratista).order_by('-creado_en')
+    total = resenas.count()
+    promedio = round(sum(r.rating for r in resenas) / total, 1) if total > 0 else None
+
+    data = {
+        'promedio': promedio,
+        'total': total,
+        'resenas': [{
+            'id': r.id,
+            'nombre_cliente': r.nombre_cliente,
+            'rating': r.rating,
+            'comentario': r.comentario,
+            'creado_en': r.creado_en,
+            'trabajo': r.trabajo.descripcion,
+        } for r in resenas]
+    }
+    return Response(data)
