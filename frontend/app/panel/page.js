@@ -34,6 +34,8 @@ const comunas = [
   'Santiago Centro', 'Vitacura', 'Puente Alto', 'San Bernardo'
 ]
 
+const oficios = ['Gasfitero', 'Electricista', 'Pintor', 'Cerrajero', 'Jardinero', 'Carpintero', 'Albanil', 'Tecnico en climatizacion', 'Técnico en refrigeración', 'Instalador de pisos', 'Techador', 'Plomero', 'Otro']
+
 const itemVacio = () => ({ descripcion: '', cantidad: 1, precio_unitario: '' })
 
 const TIPOS_IMPUESTO = [
@@ -70,6 +72,17 @@ export default function Panel() {
   const [filtroSolicitudes, setFiltroSolicitudes] = useState('activas')
 
   const [resenas, setResenas] = useState({ promedio: null, total: 0, resenas: [] })
+
+  const [config, setConfig] = useState(null)
+  const [formConfig, setFormConfig] = useState({ oficio: '', descripcion: '', comuna: '', experiencia: '', telefono: '', activo: true })
+  const [formPassword, setFormPassword] = useState({ password_actual: '', password_nuevo: '', password_confirmar: '' })
+  const [guardandoConfig, setGuardandoConfig] = useState(false)
+  const [guardandoPassword, setGuardandoPassword] = useState(false)
+  const [msgConfig, setMsgConfig] = useState(null)
+  const [msgPassword, setMsgPassword] = useState(null)
+  const [eliminando, setEliminando] = useState(false)
+  const [passwordEliminar, setPasswordEliminar] = useState('')
+  const [showConfirmEliminar, setShowConfirmEliminar] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -225,6 +238,73 @@ export default function Panel() {
     setResenas(await res.json())
   }
 
+  async function fetchConfig() {
+    const res = await fetch(`${API}/api/configuracion/`, { headers: { 'Authorization': `Bearer ${token()}` } })
+    const data = await res.json()
+    setConfig(data)
+    setFormConfig({
+      oficio: data.oficio || '',
+      descripcion: data.descripcion || '',
+      comuna: data.comuna || '',
+      experiencia: data.experiencia || '',
+      telefono: data.telefono || '',
+      activo: data.activo,
+    })
+  }
+
+  async function guardarConfig() {
+    setGuardandoConfig(true)
+    setMsgConfig(null)
+    const res = await fetch(`${API}/api/configuracion/`, {
+      method: 'PATCH', headers: headers(),
+      body: JSON.stringify({ ...formConfig, experiencia: parseInt(formConfig.experiencia) || 0 })
+    })
+    setGuardandoConfig(false)
+    if (res.ok) {
+      setMsgConfig({ tipo: 'ok', texto: 'Perfil actualizado correctamente' })
+    } else {
+      setMsgConfig({ tipo: 'error', texto: 'Error al guardar los cambios' })
+    }
+  }
+
+  async function cambiarPassword() {
+    if (formPassword.password_nuevo !== formPassword.password_confirmar) {
+      setMsgPassword({ tipo: 'error', texto: 'Las contraseñas nuevas no coinciden' })
+      return
+    }
+    setGuardandoPassword(true)
+    setMsgPassword(null)
+    const res = await fetch(`${API}/api/configuracion/cambiar-password/`, {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify({ password_actual: formPassword.password_actual, password_nuevo: formPassword.password_nuevo })
+    })
+    const data = await res.json()
+    setGuardandoPassword(false)
+    if (res.ok) {
+      setMsgPassword({ tipo: 'ok', texto: 'Contraseña actualizada correctamente' })
+      setFormPassword({ password_actual: '', password_nuevo: '', password_confirmar: '' })
+    } else {
+      setMsgPassword({ tipo: 'error', texto: data.error || 'Error al cambiar contraseña' })
+    }
+  }
+
+  async function eliminarCuenta() {
+    setEliminando(true)
+    const res = await fetch(`${API}/api/configuracion/eliminar-cuenta/`, {
+      method: 'DELETE', headers: headers(),
+      body: JSON.stringify({ password: passwordEliminar })
+    })
+    setEliminando(false)
+    if (res.ok) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('refresh')
+      window.location.href = '/'
+    } else {
+      const data = await res.json()
+      alert(data.error || 'Error al eliminar la cuenta')
+    }
+  }
+
   const cerrarSesion = () => {
     localStorage.removeItem('token'); localStorage.removeItem('refresh'); window.location.href = '/'
   }
@@ -287,6 +367,7 @@ export default function Panel() {
                 if (item.key === 'cotizaciones') { fetchCotizaciones(); fetchClientes() }
                 if (item.key === 'solicitudes') fetchSolicitudes()
                 if (item.key === 'resenas') fetchResenas()
+                if (item.key === 'configuracion') fetchConfig()
               }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', background: seccion === item.key ? 'rgba(255,255,255,0.15)' : 'transparent' }}>
                 <span style={{ fontSize: '16px' }}>{item.icon}</span>
                 <span style={{ color: seccion === item.key ? '#fff' : '#93C5FD', fontSize: '14px', fontWeight: seccion === item.key ? '500' : '400', flex: 1 }}>{item.label}</span>
@@ -383,6 +464,40 @@ export default function Panel() {
                 <button onClick={() => { setShowModalCliente(false); setClienteEditando(null); setFormCliente({ nombre: '', telefono: '', email: '', direccion: '', comuna: '' }) }} style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>Cancelar</button>
                 <button onClick={clienteEditando ? editarCliente : crearCliente} style={{ flex: 1, padding: '10px', background: '#F97316', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
                   {clienteEditando ? 'Guardar cambios' : 'Guardar cliente'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL CONFIRMAR ELIMINACIÓN */}
+        {showConfirmEliminar && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}>
+            <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '440px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '48px', marginBottom: '12px' }}>⚠️</div>
+                <h2 style={{ fontWeight: 700, color: '#991B1B', margin: '0 0 8px' }}>Eliminar cuenta permanentemente</h2>
+                <p style={{ color: '#6B7280', fontSize: '14px', lineHeight: '1.6' }}>
+                  Esta acción es irreversible. Se eliminarán todos tus datos, trabajos, clientes y cotizaciones.
+                </p>
+              </div>
+              <div>
+                <label style={labelStyle}>Ingresa tu contraseña para confirmar</label>
+                <input
+                  type="password"
+                  value={passwordEliminar}
+                  onChange={e => setPasswordEliminar(e.target.value)}
+                  placeholder="Tu contraseña actual"
+                  style={inputStyle}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button onClick={() => { setShowConfirmEliminar(false); setPasswordEliminar('') }} style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>
+                  Cancelar
+                </button>
+                <button onClick={eliminarCuenta} disabled={eliminando || !passwordEliminar}
+                  style={{ flex: 1, padding: '10px', background: eliminando ? '#9CA3AF' : '#DC2626', color: 'white', border: 'none', borderRadius: '8px', cursor: eliminando ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '14px' }}>
+                  {eliminando ? 'Eliminando...' : 'Eliminar cuenta'}
                 </button>
               </div>
             </div>
@@ -827,9 +942,132 @@ export default function Panel() {
           </div>
         )}
 
+        {/* SECCIÓN CONFIGURACIÓN */}
         {seccion === 'configuracion' && (
-          <div style={{ padding: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px' }}>
-            <p style={{ color: '#6B7280', fontSize: '16px' }}>Sección en construcción 🚧</p>
+          <div style={{ padding: '32px', maxWidth: '720px' }}>
+
+            {/* BLOQUE 1 — PERFIL PÚBLICO */}
+            <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '28px', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>Perfil público</h2>
+              <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '20px' }}>Esta información es visible para los clientes en el directorio.</p>
+
+              {config === null ? (
+                <p style={{ color: '#6B7280', fontSize: '14px' }}>Cargando...</p>
+              ) : (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div>
+                      <label style={labelStyle}>Oficio</label>
+                      <select value={formConfig.oficio} onChange={e => setFormConfig({ ...formConfig, oficio: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
+                        <option value="">Selecciona un oficio</option>
+                        {oficios.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Años de experiencia</label>
+                      <input type="number" min="0" max="50" value={formConfig.experiencia} onChange={e => setFormConfig({ ...formConfig, experiencia: e.target.value })} style={inputStyle} />
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={labelStyle}>Comuna donde prestas servicio</label>
+                    <select value={formConfig.comuna} onChange={e => setFormConfig({ ...formConfig, comuna: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
+                      <option value="">Selecciona una comuna</option>
+                      {comunas.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={labelStyle}>Descripción / Sobre mí</label>
+                    <textarea value={formConfig.descripcion} onChange={e => setFormConfig({ ...formConfig, descripcion: e.target.value })}
+                      rows={4} placeholder="Cuéntales a tus clientes quién eres y qué haces..."
+                      style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} />
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: '#F8F9FA', borderRadius: '10px', marginBottom: '20px' }}>
+                    <div>
+                      <p style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>Perfil público visible</p>
+                      <p style={{ fontSize: '12px', color: '#6B7280', margin: 0 }}>Desactiva para ocultarte del directorio</p>
+                    </div>
+                    <div onClick={() => setFormConfig({ ...formConfig, activo: !formConfig.activo })}
+                      style={{ width: '44px', height: '24px', borderRadius: '999px', background: formConfig.activo ? '#059669' : '#D1D5DB', cursor: 'pointer', position: 'relative', transition: 'background 0.2s' }}>
+                      <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#fff', position: 'absolute', top: '3px', left: formConfig.activo ? '23px' : '3px', transition: 'left 0.2s' }} />
+                    </div>
+                  </div>
+
+                  {msgConfig && (
+                    <div style={{ padding: '10px 14px', borderRadius: '8px', marginBottom: '16px', background: msgConfig.tipo === 'ok' ? '#ECFDF5' : '#FEE2E2', color: msgConfig.tipo === 'ok' ? '#065F46' : '#991B1B', fontSize: '14px' }}>
+                      {msgConfig.tipo === 'ok' ? '✓ ' : '✗ '}{msgConfig.texto}
+                    </div>
+                  )}
+
+                  <button onClick={guardarConfig} disabled={guardandoConfig}
+                    style={{ background: guardandoConfig ? '#9CA3AF' : '#1B3A6B', color: 'white', border: 'none', padding: '10px 24px', borderRadius: '8px', cursor: guardandoConfig ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '14px' }}>
+                    {guardandoConfig ? 'Guardando...' : 'Guardar cambios'}
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* BLOQUE 2 — CUENTA */}
+            <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '28px', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>Cuenta</h2>
+              <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '20px' }}>Datos de acceso y contacto.</p>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={labelStyle}>Email (no se puede cambiar)</label>
+                <input type="email" value={config?.email || ''} disabled style={{ ...inputStyle, background: '#F9FAFB', color: '#9CA3AF', cursor: 'not-allowed' }} />
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={labelStyle}>Teléfono de contacto</label>
+                <input type="text" value={formConfig.telefono} onChange={e => setFormConfig({ ...formConfig, telefono: e.target.value })} style={inputStyle} placeholder="+56 9 1234 5678" />
+              </div>
+
+              <div style={{ borderTop: '1px solid #F3F4F6', paddingTop: '20px', marginTop: '8px' }}>
+                <p style={{ fontSize: '14px', fontWeight: 600, color: '#111827', marginBottom: '16px' }}>Cambiar contraseña</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div>
+                    <label style={labelStyle}>Contraseña actual</label>
+                    <input type="password" value={formPassword.password_actual} onChange={e => setFormPassword({ ...formPassword, password_actual: e.target.value })} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Nueva contraseña</label>
+                    <input type="password" value={formPassword.password_nuevo} onChange={e => setFormPassword({ ...formPassword, password_nuevo: e.target.value })} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Confirmar nueva contraseña</label>
+                    <input type="password" value={formPassword.password_confirmar} onChange={e => setFormPassword({ ...formPassword, password_confirmar: e.target.value })} style={inputStyle} />
+                  </div>
+                </div>
+
+                {msgPassword && (
+                  <div style={{ padding: '10px 14px', borderRadius: '8px', margin: '16px 0 0', background: msgPassword.tipo === 'ok' ? '#ECFDF5' : '#FEE2E2', color: msgPassword.tipo === 'ok' ? '#065F46' : '#991B1B', fontSize: '14px' }}>
+                    {msgPassword.tipo === 'ok' ? '✓ ' : '✗ '}{msgPassword.texto}
+                  </div>
+                )}
+
+                <button onClick={cambiarPassword} disabled={guardandoPassword}
+                  style={{ marginTop: '16px', background: guardandoPassword ? '#9CA3AF' : '#1B3A6B', color: 'white', border: 'none', padding: '10px 24px', borderRadius: '8px', cursor: guardandoPassword ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '14px' }}>
+                  {guardandoPassword ? 'Actualizando...' : 'Actualizar contraseña'}
+                </button>
+              </div>
+            </div>
+
+            {/* BLOQUE 3 — ZONA DE PELIGRO */}
+            <div style={{ background: '#fff', border: '1px solid #FCA5A5', borderRadius: '16px', padding: '28px' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#991B1B', marginBottom: '4px' }}>Zona de peligro</h2>
+              <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '20px' }}>Acciones irreversibles. Procede con cuidado.</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: '#FFF5F5', borderRadius: '10px', border: '1px solid #FEE2E2' }}>
+                <div>
+                  <p style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 4px' }}>Eliminar mi cuenta</p>
+                  <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Se eliminarán permanentemente todos tus datos.</p>
+                </div>
+                <button onClick={() => setShowConfirmEliminar(true)}
+                  style={{ background: 'none', border: '1px solid #EF4444', color: '#EF4444', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, flexShrink: 0 }}>
+                  Eliminar cuenta
+                </button>
+              </div>
+            </div>
+
           </div>
         )}
 
