@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react'
 
 export default function CalificarTrabajo({ params }) {
-  const token = params?.token  // antes era id
+  const { token } = use(params)
   const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
   const [cargando, setCargando] = useState(true)
@@ -15,7 +15,6 @@ export default function CalificarTrabajo({ params }) {
 
   const [rating, setRating] = useState(0)
   const [hover, setHover] = useState(0)
-  const [nombreCliente, setNombreCliente] = useState('')
   const [comentario, setComentario] = useState('')
 
   useEffect(() => {
@@ -32,13 +31,12 @@ export default function CalificarTrabajo({ params }) {
   }, [token])
 
   async function enviarCalificacion() {
-    if (!nombreCliente.trim()) { alert('Por favor ingresa tu nombre'); return }
     if (rating === 0) { alert('Por favor selecciona una calificación'); return }
     setEnviando(true)
     const res = await fetch(`${API}/api/trabajos/${token}/calificar/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nombre_cliente: nombreCliente, rating, comentario })
+      body: JSON.stringify({ rating, comentario })
     })
     const data = await res.json()
     if (res.ok) {
@@ -132,19 +130,6 @@ export default function CalificarTrabajo({ params }) {
               {['', 'Muy malo', 'Malo', 'Regular', 'Bueno', '¡Excelente!'][rating]}
             </p>
           )}
-        </div>
-
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500, display: 'block', marginBottom: '4px' }}>
-            Tu nombre *
-          </label>
-          <input
-            type="text"
-            value={nombreCliente}
-            onChange={e => setNombreCliente(e.target.value)}
-            placeholder="Ej: María González"
-            style={{ width: '100%', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', boxSizing: 'border-box' }}
-          />
         </div>
 
         <div style={{ marginBottom: '1.5rem' }}>
