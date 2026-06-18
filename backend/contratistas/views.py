@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .models import Contratista, Trabajo, Cliente, Cotizacion, ItemCotizacion, SolicitudCotizacion
+from .models import Contratista, Trabajo, Cliente, Cotizacion, ItemCotizacion, SolicitudCotizacion, Resena
 from .serializers import ContratistaSerializer, TrabajoSerializer, ClienteSerializer, CotizacionSerializer, ItemCotizacionSerializer
 
 resend.api_key = os.environ.get('RESEND_API_KEY', '')
@@ -191,6 +191,39 @@ def enviar_email_trabajo_completado(trabajo):
         })
     except Exception as e:
         print(f"Error enviando email trabajo completado: {e}")
+
+
+def enviar_email_resena_contratista(resena):
+    try:
+        contratista = resena.contratista
+        if not contratista.usuario or not contratista.usuario.email:
+            return
+        estrellas = '⭐' * resena.rating
+        resend.Emails.send({
+            "from": "tumaestro.app <noreply@tumaestro.app>",
+            "to": contratista.usuario.email,
+            "subject": f"⭐ Nueva reseña de {resena.nombre_cliente}",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+                <h2 style="color: #1B3A6B;">¡Tienes una nueva reseña!</h2>
+                <p>Hola <strong>{contratista.nombre}</strong>,</p>
+                <p><strong>{resena.nombre_cliente}</strong> ha calificado tu trabajo.</p>
+                <div style="background: #F8F9FA; border-radius: 8px; padding: 20px; margin: 16px 0; border-left: 4px solid #F97316; text-align: center;">
+                    <p style="font-size: 32px; margin: 0 0 8px;">{estrellas}</p>
+                    <p style="font-size: 20px; font-weight: 700; color: #1B3A6B; margin: 0 0 8px;">{resena.rating} / 5</p>
+                    {f'<p style="font-size: 15px; color: #374151; font-style: italic; margin: 12px 0 0;">"{resena.comentario}"</p>' if resena.comentario else ''}
+                </div>
+                <a href="{FRONTEND_URL}/panel" style="display: inline-block; background: #1B3A6B; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 8px;">
+                    Ver en mi panel →
+                </a>
+                <p style="color: #9CA3AF; font-size: 12px; margin-top: 32px; border-top: 1px solid #E5E7EB; padding-top: 16px;">
+                    tumaestro.app — La plataforma para contratistas independientes en Chile
+                </p>
+            </div>
+            """
+        })
+    except Exception as e:
+        print(f"Error enviando email reseña al contratista: {e}")
 
 
 # CLASES Y VISTAS
@@ -569,3 +602,57 @@ def cotizacion_responder(request, token):
         cotizacion.save()
 
     return Response({'estado': cotizacion.estado})
+
+
+@api_view(['GET', 'POST'])
+def calificar_trabajo(request, pk):
+    try:
+        trabajo = Trabajo.objects.get(pk=pk)
+    except Trabajo.DoesNotExist:
+        return Response({'error': 'Trabajo no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+    if trabajo.estado != 'completado':
+        return Response({'error': 'Este trabajo no puede ser calificado'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if request.method == 'GET':
+        ya_calificado = Resena.objects.filter(trabajo=trabajo).exists()
+        try:
+            contratista = Contratista.objects.get(usuario=trabajo.usuario)
+        except Contratista.DoesNotExist:
+            return Response({'error': 'Contratista no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({
+            'ya_calificado': ya_calificado,
+            'trabajo': trabajo.descripcion,
+            'contratista': contratista.nombre,
+            'contratista_oficio': contratista.oficio,
+        })
+
+    # POST — guardar reseña
+    if Resena.objects.filter(trabajo=trabajo).exists():
+        return Response({'error': 'Este trabajo ya fue calificado'}, status=status.HTTP_400_BAD_REQUEST)
+
+    nombre_cliente = request.data.get('nombre_cliente', '').strip()
+    rating = request.data.get('rating')
+    comentario = request.data.get('comentario', '').strip()
+
+    if not nombre_cliente:
+        return Response({'error': 'El nombre es requerido'}, status=status.HTTP_400_BAD_REQUEST)
+    if not rating or int(rating) not in [1, 2, 3, 4, 5]:
+        return Response({'error': 'Rating debe ser entre 1 y 5'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        contratista = Contratista.objects.get(usuario=trabajo.usuario)
+    except Contratista.DoesNotExist:
+        return Response({'error': 'Contratista no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+    resena = Resena.objects.create(
+        trabajo=trabajo,
+        contratista=contratista,
+        nombre_cliente=nombre_cliente,
+        rating=int(rating),
+        comentario=comentario
+    )
+
+    enviar_email_resena_contratista(resena)
+
+    return Response({'mensaje': 'Reseña enviada con éxito'}, status=status.HTTP_201_CREATED)

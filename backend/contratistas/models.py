@@ -110,3 +110,15 @@ class SolicitudCotizacion(models.Model):
 
     def __str__(self):
         return f"Solicitud de {self.nombre_cliente} para {self.contratista.nombre}"
+
+
+class Resena(models.Model):
+    trabajo = models.OneToOneField(Trabajo, on_delete=models.CASCADE, related_name='resena')
+    contratista = models.ForeignKey(Contratista, on_delete=models.CASCADE, related_name='resenas')
+    nombre_cliente = models.CharField(max_length=100)
+    rating = models.IntegerField(default=5)
+    comentario = models.TextField(blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Reseña de {self.nombre_cliente} para {self.contratista.nombre} — {self.rating}★"
