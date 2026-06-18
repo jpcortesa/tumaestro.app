@@ -44,6 +44,8 @@ const TIPOS_IMPUESTO = [
   { value: 'honorarios', label: 'Retención 15,25% (Boleta honorarios)', tasa: 0.1525 },
 ]
 
+const TODAS_COMUNAS = 'Todas las comunas de Santiago'
+
 export default function Panel() {
   const [autorizado, setAutorizado] = useState(false)
   const [usuario, setUsuario] = useState({ nombre: '', email: '' })
@@ -74,7 +76,7 @@ export default function Panel() {
   const [resenas, setResenas] = useState({ promedio: null, total: 0, resenas: [] })
 
   const [config, setConfig] = useState(null)
-  const [formConfig, setFormConfig] = useState({ oficio: '', descripcion: '', comuna: '', experiencia: '', telefono: '', activo: true })
+  const [formConfig, setFormConfig] = useState({ oficio: '', descripcion: '', comuna: '', comunas: [], experiencia: '', telefono: '', activo: true })
   const [formPassword, setFormPassword] = useState({ password_actual: '', password_nuevo: '', password_confirmar: '' })
   const [guardandoConfig, setGuardandoConfig] = useState(false)
   const [guardandoPassword, setGuardandoPassword] = useState(false)
@@ -246,6 +248,7 @@ export default function Panel() {
       oficio: data.oficio || '',
       descripcion: data.descripcion || '',
       comuna: data.comuna || '',
+      comunas: data.comunas || [],
       experiencia: data.experiencia || '',
       telefono: data.telefono || '',
       activo: data.activo,
@@ -303,6 +306,22 @@ export default function Panel() {
       const data = await res.json()
       alert(data.error || 'Error al eliminar la cuenta')
     }
+  }
+
+  // helpers comunas múltiples
+  const todasSeleccionadas = (formConfig.comunas || []).includes(TODAS_COMUNAS)
+
+  function toggleTodasComunas(checked) {
+    setFormConfig({ ...formConfig, comunas: checked ? [TODAS_COMUNAS] : [] })
+  }
+
+  function agregarComuna(comuna) {
+    if (!comuna || (formConfig.comunas || []).includes(comuna)) return
+    setFormConfig({ ...formConfig, comunas: [...(formConfig.comunas || []), comuna] })
+  }
+
+  function quitarComuna(comuna) {
+    setFormConfig({ ...formConfig, comunas: (formConfig.comunas || []).filter(c => c !== comuna) })
   }
 
   const cerrarSesion = () => {
@@ -483,13 +502,7 @@ export default function Panel() {
               </div>
               <div>
                 <label style={labelStyle}>Ingresa tu contraseña para confirmar</label>
-                <input
-                  type="password"
-                  value={passwordEliminar}
-                  onChange={e => setPasswordEliminar(e.target.value)}
-                  placeholder="Tu contraseña actual"
-                  style={inputStyle}
-                />
+                <input type="password" value={passwordEliminar} onChange={e => setPasswordEliminar(e.target.value)} placeholder="Tu contraseña actual" style={inputStyle} />
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button onClick={() => { setShowConfirmEliminar(false); setPasswordEliminar('') }} style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>
@@ -968,13 +981,47 @@ export default function Panel() {
                       <input type="number" min="0" max="50" value={formConfig.experiencia} onChange={e => setFormConfig({ ...formConfig, experiencia: e.target.value })} style={inputStyle} />
                     </div>
                   </div>
+
+                  {/* SELECTOR COMUNAS MÚLTIPLES */}
                   <div style={{ marginBottom: '16px' }}>
-                    <label style={labelStyle}>Comuna donde prestas servicio</label>
-                    <select value={formConfig.comuna} onChange={e => setFormConfig({ ...formConfig, comuna: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
-                      <option value="">Selecciona una comuna</option>
-                      {comunas.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                    <label style={labelStyle}>Comunas donde prestas servicio</label>
+                    <div style={{ marginTop: '8px' }}>
+                      {/* Opción Todas */}
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', border: `1px solid ${todasSeleccionadas ? '#1B3A6B' : '#E5E7EB'}`, background: todasSeleccionadas ? '#EEF2FF' : '#fff', marginBottom: '10px', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={todasSeleccionadas} onChange={e => toggleTodasComunas(e.target.checked)} style={{ accentColor: '#1B3A6B', width: '16px', height: '16px' }} />
+                        <span style={{ fontSize: '14px', fontWeight: 600, color: '#1B3A6B' }}>🗺 Todas las comunas de Santiago</span>
+                      </label>
+
+                      {/* Chips + selector cuando NO es Todas */}
+                      {!todasSeleccionadas && (
+                        <>
+                          {(formConfig.comunas || []).length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                              {(formConfig.comunas || []).map(c => (
+                                <span key={c} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#EEF2FF', color: '#1B3A6B', fontSize: '13px', padding: '4px 10px', borderRadius: '999px', fontWeight: 500 }}>
+                                  {c}
+                                  <span onClick={() => quitarComuna(c)} style={{ cursor: 'pointer', color: '#6B7280', fontWeight: 700, lineHeight: 1 }}>×</span>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <select
+                            value=""
+                            onChange={e => { agregarComuna(e.target.value) }}
+                            style={{ ...inputStyle, background: '#fff', marginTop: 0 }}>
+                            <option value="">+ Agregar una comuna...</option>
+                            {comunas.filter(c => !(formConfig.comunas || []).includes(c)).map(c => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+                          {(formConfig.comunas || []).length === 0 && (
+                            <p style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '6px' }}>Selecciona al menos una comuna o marca "Todas las comunas"</p>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
+
                   <div style={{ marginBottom: '20px' }}>
                     <label style={labelStyle}>Descripción / Sobre mí</label>
                     <textarea value={formConfig.descripcion} onChange={e => setFormConfig({ ...formConfig, descripcion: e.target.value })}

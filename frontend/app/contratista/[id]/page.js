@@ -15,6 +15,13 @@ function colorPorNombre(nombre) {
   return colores[hash % colores.length]
 }
 
+function mostrarComunas(contratista) {
+  if (!contratista) return ''
+  if (contratista.comunas?.includes('Todas las comunas de Santiago')) return '🗺 Toda Santiago'
+  if (contratista.comunas?.length > 0) return '📍 ' + contratista.comunas.join(', ')
+  return '📍 ' + (contratista.comuna || '')
+}
+
 export default function PerfilContratista() {
   const params = useParams()
   const [contratista, setContratista] = useState(null)
@@ -94,8 +101,11 @@ export default function PerfilContratista() {
                       <span style={{ background: '#ECFDF5', color: '#059669', fontSize: '13px', padding: '4px 12px', borderRadius: '999px', fontWeight: '500' }}>Verificado</span>
                     )}
                   </div>
-                  <p style={{ fontSize: '16px', color: '#6B7280', marginBottom: '12px' }}>
-                    {contratista.oficio} · {contratista.experiencia} años de experiencia · {contratista.comuna}
+                  <p style={{ fontSize: '15px', color: '#6B7280', marginBottom: '6px' }}>
+                    {contratista.oficio} · {contratista.experiencia} años de experiencia
+                  </p>
+                  <p style={{ fontSize: '14px', color: '#6B7280', margin: 0 }}>
+                    {mostrarComunas(contratista)}
                   </p>
                 </div>
               </div>

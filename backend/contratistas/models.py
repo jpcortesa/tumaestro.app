@@ -9,6 +9,7 @@ class Contratista(models.Model):
     telefono = models.CharField(max_length=20)
     descripcion = models.TextField(blank=True)
     comuna = models.CharField(max_length=100, blank=True)
+    comunas = models.JSONField(default=list, blank=True)
     experiencia = models.IntegerField(default=0)
     activo = models.BooleanField(default=True)
     verificado = models.BooleanField(default=False)
