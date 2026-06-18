@@ -700,3 +700,70 @@ def mis_resenas(request):
         } for r in resenas]
     }
     return Response(data)
+
+
+# CONFIGURACIÓN
+
+class ConfiguracionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            contratista = Contratista.objects.get(usuario=request.user)
+        except Contratista.DoesNotExist:
+            return Response({'error': 'No encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({
+            'nombre': contratista.nombre,
+            'oficio': contratista.oficio,
+            'descripcion': contratista.descripcion,
+            'comuna': contratista.comuna,
+            'experiencia': contratista.experiencia,
+            'telefono': contratista.telefono,
+            'activo': contratista.activo,
+            'email': request.user.email,
+        })
+
+    def patch(self, request):
+        try:
+            contratista = Contratista.objects.get(usuario=request.user)
+        except Contratista.DoesNotExist:
+            return Response({'error': 'No encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+        campos = ['oficio', 'descripcion', 'comuna', 'experiencia', 'telefono', 'activo']
+        for campo in campos:
+            if campo in request.data:
+                setattr(contratista, campo, request.data[campo])
+        contratista.save()
+        return Response({'mensaje': 'Configuración actualizada'})
+
+
+@api_view(['POST'])
+def cambiar_password(request):
+    if not request.user.is_authenticated:
+        return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    password_actual = request.data.get('password_actual', '')
+    password_nuevo = request.data.get('password_nuevo', '')
+
+    if not request.user.check_password(password_actual):
+        return Response({'error': 'La contraseña actual es incorrecta'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if len(password_nuevo) < 6:
+        return Response({'error': 'La nueva contraseña debe tener al menos 6 caracteres'}, status=status.HTTP_400_BAD_REQUEST)
+
+    request.user.set_password(password_nuevo)
+    request.user.save()
+    return Response({'mensaje': 'Contraseña actualizada correctamente'})
+
+
+@api_view(['DELETE'])
+def eliminar_cuenta(request):
+    if not request.user.is_authenticated:
+        return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    password = request.data.get('password', '')
+    if not request.user.check_password(password):
+        return Response({'error': 'Contraseña incorrecta'}, status=status.HTTP_400_BAD_REQUEST)
+
+    request.user.delete()
+    return Response({'mensaje': 'Cuenta eliminada permanentemente'})
