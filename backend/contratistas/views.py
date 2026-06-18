@@ -426,6 +426,9 @@ def contratistas_publicos(request):
     contratistas = Contratista.objects.filter(activo=True).order_by('-creado_en')
     data = []
     for c in contratistas:
+        resenas = Resena.objects.filter(contratista=c)
+        total = resenas.count()
+        promedio = round(sum(r.rating for r in resenas) / total, 1) if total > 0 else None
         data.append({
             'id': c.id,
             'nombre': c.nombre,
@@ -434,6 +437,8 @@ def contratistas_publicos(request):
             'experiencia': c.experiencia,
             'descripcion': c.descripcion,
             'verificado': c.verificado,
+            'promedio_resenas': promedio,
+            'total_resenas': total,
         })
     return Response(data)
 
@@ -624,7 +629,6 @@ def calificar_trabajo(request, token_resena):
             'contratista_oficio': contratista.oficio,
         })
 
-    # POST — guardar reseña
     if Resena.objects.filter(trabajo=trabajo).exists():
         return Response({'error': 'Este trabajo ya fue calificado'}, status=status.HTTP_400_BAD_REQUEST)
 

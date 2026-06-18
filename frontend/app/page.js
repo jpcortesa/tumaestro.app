@@ -121,7 +121,16 @@ export default function Home() {
                   </div>
                   <p style={{ fontWeight: '600', fontSize: '16px', color: '#111827', marginBottom: '4px' }}>{c.nombre}</p>
                   <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '12px' }}>{c.oficio} · {c.experiencia} años exp.</p>
-                  <p style={{ fontSize: '13px', color: '#6B7280' }}>📍 {c.comuna}</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>📍 {c.comuna}</p>
+                    {c.promedio_resenas ? (
+                      <span style={{ fontSize: '13px', color: '#F97316', fontWeight: 600 }}>
+                        ⭐ {c.promedio_resenas} ({c.total_resenas})
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '12px', color: '#9CA3AF' }}>Sin reseñas aún</span>
+                    )}
+                  </div>
                 </div>
               )
             })}
