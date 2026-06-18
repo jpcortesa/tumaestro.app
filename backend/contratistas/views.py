@@ -123,7 +123,7 @@ def enviar_email_trabajo_iniciado(cotizacion):
         resend.Emails.send({
             "from": "tumaestro.app <noreply@tumaestro.app>",
             "to": cliente.email,
-            "subject": f"🔨 ¡Tu trabajo está en camino! - tumaestro.app",
+            "subject": "🔨 ¡Tu trabajo está en camino! - tumaestro.app",
             "html": f"""
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
                 <h2 style="color: #1B3A6B;">¡Cotización aceptada con éxito!</h2>
@@ -144,6 +144,53 @@ def enviar_email_trabajo_iniciado(cotizacion):
         })
     except Exception as e:
         print(f"Error enviando email trabajo iniciado: {e}")
+
+
+def enviar_email_trabajo_completado(trabajo):
+    try:
+        cotizacion = Cotizacion.objects.filter(
+            usuario=trabajo.usuario,
+            cliente__nombre=trabajo.cliente,
+            estado='aprobada'
+        ).order_by('-creado_en').first()
+
+        if not cotizacion or not cotizacion.cliente.email:
+            return
+
+        cliente_email = cotizacion.cliente.email
+        cliente_nombre = cotizacion.cliente.nombre
+        contratista_nombre = f'{trabajo.usuario.first_name} {trabajo.usuario.last_name}'.strip()
+
+        resend.Emails.send({
+            "from": "tumaestro.app <noreply@tumaestro.app>",
+            "to": cliente_email,
+            "subject": f"⭐ ¿Cómo te fue con {contratista_nombre}? - tumaestro.app",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+                <h2 style="color: #1B3A6B;">¡Tu trabajo ha sido completado!</h2>
+                <p>Hola <strong>{cliente_nombre}</strong>,</p>
+                <p><strong>{contratista_nombre}</strong> ha marcado el trabajo como completado. Esperamos que todo haya salido excelente.</p>
+                <div style="background: #F8F9FA; border-radius: 8px; padding: 16px; margin: 16px 0; border-left: 4px solid #059669;">
+                    <p style="margin: 4px 0;"><strong>Trabajo:</strong> {trabajo.descripcion}</p>
+                    <p style="margin: 4px 0;"><strong>Contratista:</strong> {contratista_nombre}</p>
+                </div>
+                <p style="color: #374151; font-size: 15px; margin: 20px 0;">
+                    Tu opinión es muy importante para otros clientes. ¿Puedes tomarte un momento para calificar el trabajo?
+                </p>
+                <a href="{FRONTEND_URL}/calificar/{trabajo.id}" style="display: inline-block; background: #F97316; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px; margin-bottom: 8px;">
+                    ⭐ Calificar a {contratista_nombre} →
+                </a>
+                <p style="color: #6B7280; font-size: 13px; margin-top: 16px;">
+                    Solo toma un minuto y ayuda a otros clientes a encontrar buenos profesionales.
+                </p>
+                <p style="color: #9CA3AF; font-size: 12px; margin-top: 32px; border-top: 1px solid #E5E7EB; padding-top: 16px;">
+                    tumaestro.app — La plataforma para contratistas independientes en Chile
+                </p>
+            </div>
+            """
+        })
+    except Exception as e:
+        print(f"Error enviando email trabajo completado: {e}")
 
 
 # CLASES Y VISTAS
@@ -247,9 +294,13 @@ class TrabajoDetalleView(APIView):
             trabajo = Trabajo.objects.get(pk=pk, usuario=request.user)
         except Trabajo.DoesNotExist:
             return Response({'error': 'No encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+        nuevo_estado = request.data.get('estado')
         serializer = TrabajoSerializer(trabajo, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            if nuevo_estado == 'completado':
+                enviar_email_trabajo_completado(trabajo)
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
