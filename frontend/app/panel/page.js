@@ -7,7 +7,7 @@ const trabajosDemo = [
   { id: 2, cliente: 'Roberto Sanchez', trabajo: 'Instalacion ducha', comuna: 'Providencia', fecha: 'Manana 10:00', estado: 'Pendiente', monto: '$85.000' },
   { id: 3, cliente: 'Carmen Valdes', trabajo: 'Reparacion caneria', comuna: 'Nunoa', fecha: 'Ayer', estado: 'Completado', monto: '$35.000' },
   { id: 4, cliente: 'Jorge Perez', trabajo: 'Cambio llave paso', comuna: 'Las Condes', fecha: 'Ayer', estado: 'Completado', monto: '$25.000' },
-  { id: 5, cliente: 'Ana Martinez', trabajo: 'Instalacion calefon', comuna: 'Vitacura', fecha: '03/06/2026', estado: 'Cotizacion', monto: '$120.000' },
+  { id: 5, cliente: 'Rcihard Martinez', trabajo: 'Instalacion calefon', comuna: 'Vitacura', fecha: '03/06/2026', estado: 'Cotizacion', monto: '$120.000' },
 ]
 
 const estadoColor = {
