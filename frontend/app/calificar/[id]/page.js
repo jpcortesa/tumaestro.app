@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, use } from 'react'
 
 export default function CalificarTrabajo({ params }) {
-  const id = params?.id
+  const { id } = use(params)
   const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
   const [cargando, setCargando] = useState(true)
