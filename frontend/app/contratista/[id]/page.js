@@ -22,12 +22,33 @@ function mostrarComunas(contratista) {
   return '📍 ' + (contratista.comuna || '')
 }
 
+function validarTelefono(num) {
+  return /^9\d{8}$/.test(num.replace(/\s/g, ''))
+}
+
+function validarEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
+function ErrorMsg({ msg }) {
+  if (!msg) return null
+  return <p style={{ fontSize: '11px', color: '#EF4444', margin: '3px 0 0' }}>{msg}</p>
+}
+
 export default function PerfilContratista() {
   const params = useParams()
   const [contratista, setContratista] = useState(null)
   const [loading, setLoading] = useState(true)
   const [resenas, setResenas] = useState({ promedio: null, total: 0, resenas: [] })
-  const [formSolicitud, setFormSolicitud] = useState({ nombre_cliente: '', telefono_cliente: '', email_cliente: '', descripcion: '' })
+
+  const [form, setForm] = useState({
+    nombre_cliente: '',
+    telefono_cliente: '',
+    email_cliente: '',
+    email_confirmar: '',
+    descripcion: '',
+  })
+  const [errores, setErrores] = useState({})
   const [enviado, setEnviado] = useState(false)
   const [enviando, setEnviando] = useState(false)
 
@@ -45,34 +66,72 @@ export default function PerfilContratista() {
       .catch(() => {})
   }, [params.id])
 
-  async function enviarSolicitud() {
-    if (!formSolicitud.nombre_cliente || !formSolicitud.telefono_cliente || !formSolicitud.descripcion) {
-      alert('Por favor completa nombre, teléfono y descripción')
-      return
+  const actualizar = (campo, valor) => {
+    setForm(prev => ({ ...prev, [campo]: valor }))
+    setErrores(prev => ({ ...prev, [campo]: null }))
+  }
+
+  function validar() {
+    const e = {}
+    if (!form.nombre_cliente.trim()) e.nombre_cliente = 'Tu nombre es requerido'
+    if (!form.telefono_cliente.trim()) {
+      e.telefono_cliente = 'Tu teléfono es requerido'
+    } else if (!validarTelefono(form.telefono_cliente)) {
+      e.telefono_cliente = 'Debe ser un número chileno válido: 9 XXXX XXXX'
     }
+    if (!form.email_cliente.trim()) {
+      e.email_cliente = 'Tu email es requerido'
+    } else if (!validarEmail(form.email_cliente)) {
+      e.email_cliente = 'Email inválido'
+    }
+    if (!form.email_confirmar.trim()) {
+      e.email_confirmar = 'Confirma tu email'
+    } else if (form.email_cliente !== form.email_confirmar) {
+      e.email_confirmar = 'Los emails no coinciden'
+    }
+    if (!form.descripcion.trim()) e.descripcion = 'Describe el trabajo que necesitas'
+    return e
+  }
+
+  async function enviarSolicitud() {
+    const e = validar()
+    if (Object.keys(e).length > 0) { setErrores(e); return }
+
     setEnviando(true)
     const res = await fetch(`${API}/api/publico/contratistas/${params.id}/solicitud/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formSolicitud)
+      body: JSON.stringify({
+        nombre_cliente: form.nombre_cliente,
+        telefono_cliente: `+56 ${form.telefono_cliente.trim()}`,
+        email_cliente: form.email_cliente,
+        descripcion: form.descripcion,
+      })
     })
     setEnviando(false)
     if (res.ok) setEnviado(true)
   }
 
+  const resetForm = () => {
+    setForm({ nombre_cliente: '', telefono_cliente: '', email_cliente: '', email_confirmar: '', descripcion: '' })
+    setErrores({})
+    setEnviado(false)
+  }
+
   if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <p style={{ color: '#6B7280' }}>Cargando perfil...</p>
     </div>
   )
 
   if (!contratista || contratista.error) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <p style={{ color: '#EF4444' }}>Contratista no encontrado.</p>
     </div>
   )
 
   const color = colorPorNombre(contratista.nombre)
+  const inputBase = { border: '1px solid #E5E7EB', borderRadius: '8px', padding: '11px 12px', fontSize: '14px', outline: 'none', width: '100%', boxSizing: 'border-box' }
 
   return (
     <div style={{ minHeight: '100vh', background: '#F8F9FA' }}>
@@ -177,26 +236,98 @@ export default function PerfilContratista() {
                   <p style={{ fontSize: '14px', color: '#6B7280', lineHeight: '1.6' }}>
                     {contratista.nombre} recibirá tu solicitud y se pondrá en contacto contigo pronto.
                   </p>
-                  <button onClick={() => { setEnviado(false); setFormSolicitud({ nombre_cliente: '', telefono_cliente: '', email_cliente: '', descripcion: '' }) }}
-                    style={{ marginTop: '16px', background: 'none', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontSize: '13px', color: '#6B7280' }}>
+                  <button onClick={resetForm} style={{ marginTop: '16px', background: 'none', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontSize: '13px', color: '#6B7280' }}>
                     Enviar otra solicitud
                   </button>
                 </div>
               ) : (
                 <>
-                  <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '6px' }}>Solicitar cotización</h3>
-                  <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '20px' }}>Gratis y sin compromiso</p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
-                    <input placeholder="Tu nombre *" value={formSolicitud.nombre_cliente} onChange={e => setFormSolicitud({ ...formSolicitud, nombre_cliente: e.target.value })} style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '12px', fontSize: '14px', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
-                    <input placeholder="Tu teléfono *" value={formSolicitud.telefono_cliente} onChange={e => setFormSolicitud({ ...formSolicitud, telefono_cliente: e.target.value })} style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '12px', fontSize: '14px', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
-                    <input placeholder="Tu email (opcional)" type="email" value={formSolicitud.email_cliente} onChange={e => setFormSolicitud({ ...formSolicitud, email_cliente: e.target.value })} style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '12px', fontSize: '14px', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
-                    <textarea placeholder="Describe el trabajo que necesitas... *" rows={4} value={formSolicitud.descripcion} onChange={e => setFormSolicitud({ ...formSolicitud, descripcion: e.target.value })} style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '12px', fontSize: '14px', outline: 'none', width: '100%', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                    <p style={{ fontSize: '12px', color: '#9CA3AF', margin: 0 }}>* Campos obligatorios</p>
+                  <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '4px' }}>Solicitar cotización</h3>
+                  <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '16px' }}>Gratis y sin compromiso</p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+
+                    {/* NOMBRE */}
+                    <div>
+                      <input
+                        placeholder="Tu nombre completo *"
+                        value={form.nombre_cliente}
+                        onChange={e => actualizar('nombre_cliente', e.target.value)}
+                        style={{ ...inputBase, borderColor: errores.nombre_cliente ? '#EF4444' : '#E5E7EB' }}
+                      />
+                      <ErrorMsg msg={errores.nombre_cliente} />
+                    </div>
+
+                    {/* TELÉFONO */}
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${errores.telefono_cliente ? '#EF4444' : '#E5E7EB'}`, borderRadius: '8px', overflow: 'hidden' }}>
+                        <div style={{ padding: '11px 10px', background: '#F3F4F6', borderRight: '1px solid #E5E7EB', fontSize: '14px', color: '#374151', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          +56
+                        </div>
+                        <input
+                          placeholder="9 1234 5678 *"
+                          value={form.telefono_cliente}
+                          onChange={e => actualizar('telefono_cliente', e.target.value.replace(/[^\d\s]/g, ''))}
+                          maxLength={11}
+                          style={{ flex: 1, border: 'none', outline: 'none', padding: '11px 12px', fontSize: '14px', background: 'transparent' }}
+                        />
+                      </div>
+                      <ErrorMsg msg={errores.telefono_cliente} />
+                      {!errores.telefono_cliente && form.telefono_cliente && validarTelefono(form.telefono_cliente) && (
+                        <p style={{ fontSize: '11px', color: '#059669', margin: '3px 0 0' }}>✓ Número válido</p>
+                      )}
+                    </div>
+
+                    {/* EMAIL */}
+                    <div>
+                      <input
+                        placeholder="Tu email *"
+                        type="email"
+                        value={form.email_cliente}
+                        onChange={e => actualizar('email_cliente', e.target.value)}
+                        style={{ ...inputBase, borderColor: errores.email_cliente ? '#EF4444' : '#E5E7EB' }}
+                      />
+                      <ErrorMsg msg={errores.email_cliente} />
+                    </div>
+
+                    {/* CONFIRMAR EMAIL */}
+                    <div>
+                      <input
+                        placeholder="Confirma tu email *"
+                        type="email"
+                        value={form.email_confirmar}
+                        onChange={e => actualizar('email_confirmar', e.target.value)}
+                        style={{ ...inputBase, borderColor: errores.email_confirmar ? '#EF4444' : (form.email_confirmar && form.email_cliente === form.email_confirmar) ? '#059669' : '#E5E7EB' }}
+                      />
+                      <ErrorMsg msg={errores.email_confirmar} />
+                      {!errores.email_confirmar && form.email_confirmar && form.email_cliente === form.email_confirmar && (
+                        <p style={{ fontSize: '11px', color: '#059669', margin: '3px 0 0' }}>✓ Los emails coinciden</p>
+                      )}
+                    </div>
+
+                    {/* DESCRIPCIÓN */}
+                    <div>
+                      <textarea
+                        placeholder="Describe el trabajo que necesitas... *"
+                        rows={4}
+                        value={form.descripcion}
+                        onChange={e => actualizar('descripcion', e.target.value)}
+                        style={{ ...inputBase, resize: 'none', fontFamily: 'inherit', borderColor: errores.descripcion ? '#EF4444' : '#E5E7EB' }}
+                      />
+                      <ErrorMsg msg={errores.descripcion} />
+                    </div>
+
+                    <p style={{ fontSize: '11px', color: '#9CA3AF', margin: 0 }}>* Todos los campos son obligatorios</p>
                   </div>
-                  <button onClick={enviarSolicitud} disabled={enviando} style={{ background: enviando ? '#9CA3AF' : '#F97316', border: 'none', color: '#fff', width: '100%', padding: '14px', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: enviando ? 'not-allowed' : 'pointer', marginBottom: '16px' }}>
+
+                  <button
+                    onClick={enviarSolicitud}
+                    disabled={enviando}
+                    style={{ background: enviando ? '#9CA3AF' : '#F97316', border: 'none', color: '#fff', width: '100%', padding: '14px', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: enviando ? 'not-allowed' : 'pointer', marginBottom: '14px' }}>
                     {enviando ? 'Enviando...' : 'Enviar solicitud'}
                   </button>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {['Responde en menos de 1 hora', 'Cotización sin compromiso', 'Sin costo'].map(t => (
                       <span key={t} style={{ fontSize: '13px', color: '#6B7280' }}>✓ {t}</span>
                     ))}
