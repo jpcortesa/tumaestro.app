@@ -25,11 +25,95 @@ function ErrorMsg({ msg }) {
 }
 
 function validarTelefonoChile(num) {
-  // Después del +56, debe ser 9 seguido de 8 dígitos (ej: 9 1234 5678)
   return /^9\d{8}$/.test(num.replace(/\s/g, ''))
 }
 
+function ModalAviso({ onAceptar }) {
+  const [leido, setLeido] = useState(false)
+
+  const puntos = [
+    {
+      icono: '✍️',
+      titulo: 'Ingresa tus datos con cuidado',
+      texto: 'Tu nombre, oficio, comunas y descripción formarán parte de tu perfil público. Asegúrate de que estén bien escritos y representen bien tu trabajo — es lo primero que verán tus futuros clientes.'
+    },
+    {
+      icono: '🔒',
+      titulo: 'Tu privacidad está protegida',
+      texto: 'Solo serán visibles públicamente tu nombre, oficio, comunas donde prestas servicio, descripción y las reseñas de tus clientes. Tu teléfono y email son privados y nunca se mostrarán en tu perfil.'
+    },
+    {
+      icono: '📸',
+      titulo: 'Tu foto de perfil será obligatoria',
+      texto: 'Una vez registrado, deberás subir una foto de perfil desde tu panel. Esto es obligatorio para activar tu perfil público, ya que brinda seguridad y transparencia a los clientes que te contactarán a través de la plataforma.'
+    },
+  ]
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '24px' }}>
+      <div style={{ background: '#fff', borderRadius: '20px', padding: '36px', maxWidth: '520px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+
+        {/* Encabezado */}
+        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+          <div style={{ fontSize: '40px', marginBottom: '12px' }}>👋</div>
+          <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#111827', margin: '0 0 8px' }}>Antes de comenzar</h2>
+          <p style={{ fontSize: '14px', color: '#6B7280', margin: 0, lineHeight: '1.5' }}>Hay algunas cosas importantes que debes saber antes de crear tu perfil en tumaestro.app.</p>
+        </div>
+
+        {/* Puntos */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+          {puntos.map((p, idx) => (
+            <div key={idx} style={{ display: 'flex', gap: '14px', padding: '16px', background: '#F8F9FA', borderRadius: '12px', border: '1px solid #F3F4F6' }}>
+              <div style={{ fontSize: '24px', flexShrink: 0, lineHeight: 1 }}>{p.icono}</div>
+              <div>
+                <p style={{ fontSize: '14px', fontWeight: '600', color: '#111827', margin: '0 0 4px' }}>{p.titulo}</p>
+                <p style={{ fontSize: '13px', color: '#6B7280', margin: 0, lineHeight: '1.5' }}>{p.texto}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Checkbox confirmación */}
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', marginBottom: '20px' }}>
+          <input
+            type="checkbox"
+            checked={leido}
+            onChange={e => setLeido(e.target.checked)}
+            style={{ accentColor: '#1B3A6B', width: '16px', height: '16px', marginTop: '2px', flexShrink: 0 }}
+          />
+          <span style={{ fontSize: '13px', color: '#374151', lineHeight: '1.5' }}>
+            He leído y entiendo la información anterior. Ingresaré mis datos con cuidado y subiré mi foto de perfil una vez registrado.
+          </span>
+        </label>
+
+        <button
+          onClick={onAceptar}
+          disabled={!leido}
+          style={{
+            width: '100%',
+            padding: '14px',
+            background: leido ? '#1B3A6B' : '#D1D5DB',
+            color: leido ? '#fff' : '#9CA3AF',
+            border: 'none',
+            borderRadius: '10px',
+            fontSize: '15px',
+            fontWeight: '600',
+            cursor: leido ? 'pointer' : 'not-allowed',
+            transition: 'background 0.2s'
+          }}>
+          Entendido, continuar con el registro →
+        </button>
+
+        <p style={{ fontSize: '12px', color: '#9CA3AF', textAlign: 'center', margin: '12px 0 0' }}>
+          Debes aceptar para continuar con el registro
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function Registro() {
+  const [mostrarAviso, setMostrarAviso] = useState(true)
   const [paso, setPaso] = useState(1)
   const [form, setForm] = useState({
     nombre: '', apellido: '', email: '', email_confirmar: '', telefono: '',
@@ -124,7 +208,11 @@ export default function Registro() {
         <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '48px', maxWidth: '480px', width: '100%', textAlign: 'center' }}>
           <div style={{ width: '64px', height: '64px', background: '#ECFDF5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '28px' }}>✓</div>
           <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '12px' }}>Registro exitoso</h2>
-          <p style={{ fontSize: '15px', color: '#6B7280', marginBottom: '32px', lineHeight: '1.6' }}>Bienvenido a tumaestro.app. Tu perfil está siendo revisado y estará activo en menos de 24 horas.</p>
+          <p style={{ fontSize: '15px', color: '#6B7280', marginBottom: '8px', lineHeight: '1.6' }}>Bienvenido a tumaestro.app.</p>
+          <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '10px', padding: '14px 16px', marginBottom: '24px', textAlign: 'left' }}>
+            <p style={{ fontSize: '13px', color: '#92400E', margin: '0 0 4px', fontWeight: 600 }}>📸 Recuerda subir tu foto de perfil</p>
+            <p style={{ fontSize: '13px', color: '#92400E', margin: 0 }}>Es obligatoria para activar tu perfil público. Puedes hacerlo desde tu panel en Configuración.</p>
+          </div>
           <button onClick={() => window.location.href = '/panel'} style={{ background: '#1B3A6B', border: 'none', color: '#fff', width: '100%', padding: '14px', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', marginBottom: '12px' }}>Ir a mi panel</button>
           <button onClick={() => window.location.href = '/'} style={{ background: 'transparent', border: '1px solid #E5E7EB', color: '#374151', width: '100%', padding: '14px', borderRadius: '10px', fontSize: '15px', cursor: 'pointer' }}>Ver directorio</button>
         </div>
@@ -134,6 +222,10 @@ export default function Registro() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#F8F9FA' }}>
+
+      {/* MODAL AVISO */}
+      {mostrarAviso && <ModalAviso onAceptar={() => setMostrarAviso(false)} />}
+
       <nav style={{ background: '#1B3A6B', padding: '0 48px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span onClick={() => window.location.href = '/'} style={{ color: '#fff', fontSize: '20px', fontWeight: '600', cursor: 'pointer' }}>tumaestro<span style={{ color: '#F97316' }}>.app</span></span>
         <span style={{ color: '#93C5FD', fontSize: '14px' }}>Ya tienes cuenta? <span onClick={() => window.location.href = '/login'} style={{ color: '#fff', cursor: 'pointer', textDecoration: 'underline' }}>Inicia sesion</span></span>
@@ -211,10 +303,7 @@ export default function Registro() {
                   </div>
                   <input
                     value={form.telefono}
-                    onChange={e => {
-                      const val = e.target.value.replace(/[^\d\s]/g, '')
-                      actualizar('telefono', val)
-                    }}
+                    onChange={e => actualizar('telefono', e.target.value.replace(/[^\d\s]/g, ''))}
                     placeholder="9 1234 5678"
                     maxLength={11}
                     style={{ flex: 1, border: 'none', outline: 'none', padding: '10px 14px', fontSize: '14px', background: 'transparent' }}
