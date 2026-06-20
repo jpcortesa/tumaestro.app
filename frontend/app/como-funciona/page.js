@@ -82,7 +82,7 @@ export default function ComoFunciona() {
             {[
               { num: '1', icono: '🔍', titulo: 'Busca y elige', texto: 'Busca por tipo de servicio y tu comuna. Revisa los perfiles, lee las reseñas reales de otros clientes y elige al profesional que más te convenza.' },
               { num: '2', icono: '📤', titulo: 'Solicita una cotización', texto: 'Envía tu solicitud directamente desde el perfil del contratista. Es gratis y sin compromiso. El profesional recibirá tu consulta y se pondrá en contacto contigo.' },
-              { num: '3', icono: '✅', titulo: 'Aprueba y califica', texto: 'El contratista te enviará una cotización por email. La puedes aprobar o rechazar en línea. Una vez completado el trabajo, deja tu reseña para ayudar a otros clientes.' },
+              { num: '3', icono: '📋', titulo: 'Cotiza y trabaja', texto: 'Desde tu panel puedes crear cotizaciones profesionales y enviárselas directamente al cliente. El cliente recibe una notificación y puede aprobarlas o rechazarlas. Una vez aprobada, coordinas el inicio del trabajo.' },
             ].map(p => (
               <div key={p.num} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
