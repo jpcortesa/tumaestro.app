@@ -60,10 +60,6 @@ export default function Home() {
     return coincideOficio && coincideComuna && coincideBusqueda
   })
 
-  function handleBuscar() {
-    // el filtrado es reactivo, el botón es solo UX
-  }
-
   return (
     <div style={{ minHeight: '100vh', background: '#F8F9FA' }}>
 
@@ -72,7 +68,11 @@ export default function Home() {
         <span style={{ color: '#fff', fontSize: '20px', fontWeight: '600' }}>tumaestro<span style={{ color: '#F97316' }}>.app</span></span>
         <div style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
           <a href="/como-funciona" style={{ color: '#93C5FD', fontSize: '14px', textDecoration: 'none' }}>¿Cómo funciona?</a>
-          <button onClick={() => window.location.href = '/registro'} style={{ background: '#F97316', border: 'none', color: '#fff', borderRadius: '8px', padding: '8px 20px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>Soy contratista</button>
+          <button
+            onClick={() => window.location.href = '/login'}
+            style={{ background: '#F97316', border: 'none', color: '#fff', borderRadius: '8px', padding: '8px 20px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
+            Iniciar sesión contratista
+          </button>
         </div>
       </nav>
 
@@ -94,7 +94,7 @@ export default function Home() {
               <input
                 value={busqueda}
                 onChange={e => setBusqueda(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleBuscar()}
+                onKeyDown={e => e.key === 'Enter' && {}}
                 placeholder="¿Qué servicio necesitas?"
                 style={{ border: 'none', outline: 'none', fontSize: '15px', color: '#111827', width: '100%', padding: '18px 0', background: 'transparent' }}
               />
@@ -109,9 +109,7 @@ export default function Home() {
                 {comunas.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-            <button
-              onClick={handleBuscar}
-              style={{ background: '#F97316', border: 'none', color: '#fff', padding: '0 32px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}>
+            <button style={{ background: '#F97316', border: 'none', color: '#fff', padding: '0 32px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}>
               Buscar
             </button>
           </div>
@@ -199,7 +197,9 @@ export default function Home() {
             </div>
           </div>
           <div style={{ textAlign: 'center' }}>
-            <button onClick={() => window.location.href = '/registro'} style={{ background: '#F97316', border: 'none', color: '#fff', padding: '16px 32px', borderRadius: '10px', fontSize: '16px', fontWeight: '600', cursor: 'pointer', marginBottom: '8px', display: 'block' }}>
+            <button
+              onClick={() => window.location.href = '/registro'}
+              style={{ background: '#F97316', border: 'none', color: '#fff', padding: '16px 32px', borderRadius: '10px', fontSize: '16px', fontWeight: '600', cursor: 'pointer', marginBottom: '8px', display: 'block' }}>
               Comenzar gratis →
             </button>
             <span style={{ fontSize: '13px', color: '#93C5FD' }}>No se requiere ningún tipo de pago</span>
