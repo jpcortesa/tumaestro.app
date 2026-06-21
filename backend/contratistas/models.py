@@ -13,11 +13,13 @@ class Contratista(models.Model):
     comunas = models.JSONField(default=list, blank=True)
     experiencia = models.IntegerField(default=0)
     activo = models.BooleanField(default=True)
+    email_verificado = models.BooleanField(default=False)
     verificado = models.BooleanField(default=False)
     creado_en = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.nombre} - {self.oficio}"
+
 
 class Cliente(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -30,6 +32,7 @@ class Cliente(models.Model):
 
     def __str__(self):
         return f"{self.nombre} - {self.usuario}"
+
 
 class Cotizacion(models.Model):
     ESTADOS = [
@@ -66,6 +69,7 @@ class Cotizacion(models.Model):
             fecha=self.creado_en.date(),
         )
 
+
 class ItemCotizacion(models.Model):
     cotizacion = models.ForeignKey(Cotizacion, on_delete=models.CASCADE, related_name='items')
     descripcion = models.CharField(max_length=200)
@@ -78,6 +82,7 @@ class ItemCotizacion(models.Model):
 
     def __str__(self):
         return f"{self.descripcion} x{self.cantidad}"
+
 
 class Trabajo(models.Model):
     ESTADOS = [
@@ -142,3 +147,13 @@ class PasswordResetToken(models.Model):
 
     def __str__(self):
         return f"Reset token para {self.user.email}"
+
+
+class EmailVerificationToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    usado = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Verificación email para {self.user.email}"

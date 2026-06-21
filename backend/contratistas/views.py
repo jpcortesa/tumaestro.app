@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .models import Contratista, Trabajo, Cliente, Cotizacion, ItemCotizacion, SolicitudCotizacion, Resena, PasswordResetToken
+from .models import Contratista, Trabajo, Cliente, Cotizacion, ItemCotizacion, SolicitudCotizacion, Resena, PasswordResetToken, EmailVerificationToken
 from .serializers import ContratistaSerializer, TrabajoSerializer, ClienteSerializer, CotizacionSerializer, ItemCotizacionSerializer
 
 resend.api_key = os.environ.get('RESEND_API_KEY', '')
@@ -151,11 +151,9 @@ def enviar_email_trabajo_completado(trabajo):
         cliente_email = trabajo.cliente_email
         if not cliente_email:
             return
-
         cliente_nombre = trabajo.cliente
         contratista_nombre = f'{trabajo.usuario.first_name} {trabajo.usuario.last_name}'.strip()
         link = f"{FRONTEND_URL}/calificar/{trabajo.token_resena}"
-
         resend.Emails.send({
             "from": "tumaestro.app <noreply@tumaestro.app>",
             "to": cliente_email,
@@ -248,6 +246,39 @@ def enviar_email_reset_password(user, token):
         print(f"Error enviando email reset: {e}")
 
 
+def enviar_email_verificacion(user, token):
+    link = f"{FRONTEND_URL}/verificar-email?token={token}"
+    try:
+        resend.Emails.send({
+            "from": "tumaestro.app <noreply@tumaestro.app>",
+            "to": user.email,
+            "subject": "✉️ Verifica tu email - tumaestro.app",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+                <h2 style="color: #1B3A6B;">¡Bienvenido a tumaestro.app!</h2>
+                <p>Hola <strong>{user.first_name}</strong>,</p>
+                <p>Gracias por registrarte. Para activar tu cuenta y comenzar a recibir clientes, debes verificar tu dirección de email.</p>
+                <div style="text-align: center; margin: 32px 0;">
+                    <a href="{link}" style="display: inline-block; background: #F97316; color: white; padding: 16px 32px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 16px;">
+                        ✅ Verificar mi email →
+                    </a>
+                </div>
+                <div style="background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 8px; padding: 14px 16px; margin: 16px 0;">
+                    <p style="font-size: 13px; color: #92400E; margin: 0;">
+                        ⚠️ Este link es válido por <strong>24 horas</strong>. Si no verificas tu email en ese plazo, deberás solicitar un nuevo link desde la página de inicio de sesión.
+                    </p>
+                </div>
+                <p style="color: #6B7280; font-size: 13px;">Si no creaste esta cuenta, puedes ignorar este email.</p>
+                <p style="color: #9CA3AF; font-size: 12px; margin-top: 32px; border-top: 1px solid #E5E7EB; padding-top: 16px;">
+                    tumaestro.app — La plataforma para contratistas independientes en Chile
+                </p>
+            </div>
+            """
+        })
+    except Exception as e:
+        print(f"Error enviando email verificación: {e}")
+
+
 # CLASES Y VISTAS
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -259,7 +290,18 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
             attrs['username'] = user.username
         except User.DoesNotExist:
             pass
-        return super().validate(attrs)
+
+        data = super().validate(attrs)
+
+        # Bloquear login si email no verificado
+        try:
+            contratista = Contratista.objects.get(usuario=self.user)
+            if not contratista.email_verificado:
+                raise Exception('EMAIL_NO_VERIFICADO')
+        except Contratista.DoesNotExist:
+            pass
+
+        return data
 
 class EmailTokenObtainPairView(TokenObtainPairView):
     serializer_class = EmailTokenObtainPairSerializer
@@ -305,10 +347,18 @@ class RegistroView(APIView):
             comuna=comuna,
             experiencia=experiencia,
             descripcion=descripcion,
-            activo=True
+            activo=True,
+            email_verificado=False,
         )
 
-        return Response({'mensaje': 'Registro exitoso', 'email': email}, status=status.HTTP_201_CREATED)
+        # Crear token y enviar email de verificación
+        verification_token = EmailVerificationToken.objects.create(user=user)
+        enviar_email_verificacion(user, verification_token.token)
+
+        return Response({
+            'mensaje': 'Registro exitoso. Revisa tu email para verificar tu cuenta.',
+            'email': email
+        }, status=status.HTTP_201_CREATED)
 
 
 class PerfilView(APIView):
@@ -320,9 +370,11 @@ class PerfilView(APIView):
             contratista = Contratista.objects.get(usuario=user)
             contratista_id = contratista.id
             oficio = contratista.oficio
+            email_verificado = contratista.email_verificado
         except Contratista.DoesNotExist:
             contratista_id = None
             oficio = None
+            email_verificado = False
 
         return Response({
             'nombre': f'{user.first_name} {user.last_name}'.strip(),
@@ -330,6 +382,7 @@ class PerfilView(APIView):
             'username': user.username,
             'contratista_id': contratista_id,
             'oficio': oficio,
+            'email_verificado': email_verificado,
         })
 
 
@@ -462,7 +515,7 @@ class CotizacionDetalleView(APIView):
 
 @api_view(['GET'])
 def contratistas_publicos(request):
-    contratistas = Contratista.objects.filter(activo=True).order_by('-creado_en')
+    contratistas = Contratista.objects.filter(activo=True, email_verificado=True).order_by('-creado_en')
     data = []
     for c in contratistas:
         resenas = Resena.objects.filter(contratista=c)
@@ -487,7 +540,7 @@ def contratistas_publicos(request):
 @api_view(['GET'])
 def contratista_publico(request, pk):
     try:
-        c = Contratista.objects.get(pk=pk, activo=True)
+        c = Contratista.objects.get(pk=pk, activo=True, email_verificado=True)
     except Contratista.DoesNotExist:
         return Response({'error': 'No encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -508,7 +561,7 @@ def contratista_publico(request, pk):
 @api_view(['POST'])
 def solicitud_cotizacion(request, pk):
     try:
-        contratista = Contratista.objects.get(pk=pk, activo=True)
+        contratista = Contratista.objects.get(pk=pk, activo=True, email_verificado=True)
     except Contratista.DoesNotExist:
         return Response({'error': 'Contratista no encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -835,13 +888,9 @@ def solicitar_reset_password(request):
     try:
         user = User.objects.get(email=email)
     except User.DoesNotExist:
-        # Respuesta genérica por seguridad
         return Response({'mensaje': 'Si ese email está registrado, recibirás un link en tu correo.'})
 
-    # Invalidar tokens anteriores
     PasswordResetToken.objects.filter(user=user, usado=False).update(usado=True)
-
-    # Crear nuevo token y enviar email
     reset_token = PasswordResetToken.objects.create(user=user)
     enviar_email_reset_password(user, reset_token.token)
 
@@ -873,3 +922,63 @@ def reset_password(request):
     reset_token.save()
 
     return Response({'mensaje': 'Contraseña actualizada correctamente'})
+
+
+# VERIFICACIÓN DE EMAIL
+
+@api_view(['POST'])
+def verificar_email(request):
+    token_str = request.data.get('token', '')
+
+    if not token_str:
+        return Response({'error': 'Token requerido'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        token = EmailVerificationToken.objects.get(token=token_str)
+    except EmailVerificationToken.DoesNotExist:
+        return Response({'error': 'Link inválido o expirado'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if token.usado:
+        return Response({'error': 'Este link ya fue usado. Tu cuenta ya está verificada.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Verificar que no hayan pasado más de 24 horas
+    from django.utils import timezone
+    from datetime import timedelta
+    if timezone.now() - token.creado_en > timedelta(hours=24):
+        return Response({'error': 'Este link expiró. Solicita uno nuevo desde el inicio de sesión.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Activar cuenta
+    try:
+        contratista = Contratista.objects.get(usuario=token.user)
+        contratista.email_verificado = True
+        contratista.save()
+    except Contratista.DoesNotExist:
+        return Response({'error': 'Cuenta no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+    token.usado = True
+    token.save()
+
+    return Response({'mensaje': 'Email verificado correctamente. Ya puedes iniciar sesión.'})
+
+
+@api_view(['POST'])
+def reenviar_verificacion(request):
+    email = request.data.get('email', '').strip().lower()
+    if not email:
+        return Response({'error': 'El email es requerido'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(email=email)
+        contratista = Contratista.objects.get(usuario=user)
+    except (User.DoesNotExist, Contratista.DoesNotExist):
+        return Response({'mensaje': 'Si ese email está registrado y pendiente de verificación, recibirás un nuevo link.'})
+
+    if contratista.email_verificado:
+        return Response({'error': 'Este email ya está verificado. Puedes iniciar sesión.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Invalidar tokens anteriores y crear uno nuevo
+    EmailVerificationToken.objects.filter(user=user, usado=False).update(usado=True)
+    nuevo_token = EmailVerificationToken.objects.create(user=user)
+    enviar_email_verificacion(user, nuevo_token.token)
+
+    return Response({'mensaje': 'Si ese email está registrado y pendiente de verificación, recibirás un nuevo link.'})
