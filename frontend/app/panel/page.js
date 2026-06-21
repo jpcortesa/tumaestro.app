@@ -290,7 +290,6 @@ export default function Panel() {
   const quitarItem = (idx) => setItems(items.filter((_, i) => i !== idx))
   const actualizarItem = (idx, campo, valor) => setItems(items.map((item, i) => i === idx ? { ...item, [campo]: valor } : item))
 
-  // cliente seleccionado en modal cotización
   const clienteSeleccionado = clientesReal.find(c => String(c.id) === String(formCotizacion.cliente))
 
   if (!autorizado) return (
@@ -707,12 +706,27 @@ export default function Panel() {
         {/* SECCIÓN COTIZACIONES */}
         {seccion === 'cotizaciones' && (
           <div style={{ padding: '32px' }}>
+
+            {/* BANNER AVISO — igual estilo que trabajos */}
+            <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '10px', padding: '14px 20px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '18px' }}>💡</span>
+              <p style={{ fontSize: '13px', color: '#92400E', margin: 0 }}>
+                Antes de crear una cotización, asegúrate de haber registrado primero al cliente en la sección{' '}
+                <strong
+                  onClick={() => { setSeccion('clientes'); fetchClientes() }}
+                  style={{ cursor: 'pointer', textDecoration: 'underline' }}>
+                  Clientes
+                </strong>.
+              </p>
+            </div>
+
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
               <button onClick={() => { setCotizacionEditando(null); setFormCotizacion({ cliente: '', descripcion: '', detalle: '', incluye_iva: false, tipo_impuesto: 'ninguno' }); setItems([itemVacio()]); setShowModalCotizacion(true); fetchClientes() }}
                 style={{ background: '#F97316', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
                 + Nueva cotización
               </button>
             </div>
+
             <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
@@ -775,15 +789,9 @@ export default function Panel() {
                     </select>
                     {clienteSeleccionado && (
                       <div style={{ marginTop: '8px', padding: '10px 12px', background: '#F8F9FA', borderRadius: '8px', border: '1px solid #F3F4F6', display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
-                        {clienteSeleccionado.telefono && (
-                          <span style={{ fontSize: '12px', color: '#9CA3AF' }}>📞 {clienteSeleccionado.telefono}</span>
-                        )}
-                        {clienteSeleccionado.email && (
-                          <span style={{ fontSize: '12px', color: '#9CA3AF' }}>✉️ {clienteSeleccionado.email}</span>
-                        )}
-                        {clienteSeleccionado.comuna && (
-                          <span style={{ fontSize: '12px', color: '#9CA3AF' }}>📍 {clienteSeleccionado.comuna}</span>
-                        )}
+                        {clienteSeleccionado.telefono && <span style={{ fontSize: '12px', color: '#9CA3AF' }}>📞 {clienteSeleccionado.telefono}</span>}
+                        {clienteSeleccionado.email && <span style={{ fontSize: '12px', color: '#9CA3AF' }}>✉️ {clienteSeleccionado.email}</span>}
+                        {clienteSeleccionado.comuna && <span style={{ fontSize: '12px', color: '#9CA3AF' }}>📍 {clienteSeleccionado.comuna}</span>}
                       </div>
                     )}
                   </div>
