@@ -10,7 +10,8 @@ from .views import (
     solicitud_cotizacion, mis_solicitudes,
     marcar_solicitud_leida, descartar_solicitud,
     calificar_trabajo, resenas_contratista, mis_resenas,
-    ConfiguracionView, cambiar_password, eliminar_cuenta
+    ConfiguracionView, cambiar_password, eliminar_cuenta,
+    solicitar_reset_password, reset_password,
 )
 
 router = DefaultRouter()
@@ -39,4 +40,6 @@ urlpatterns = router.urls + [
     path('configuracion/', ConfiguracionView.as_view()),
     path('configuracion/cambiar-password/', cambiar_password),
     path('configuracion/eliminar-cuenta/', eliminar_cuenta),
+    path('solicitar-reset-password/', solicitar_reset_password),
+    path('reset-password/', reset_password),
 ]

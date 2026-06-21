@@ -14,7 +14,7 @@ export default function Login() {
     setCargando(true)
     try {
       const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const res = await fetch(`${API}/api/token/`, {
+      const res = await fetch(`${API}/api/token/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: form.email, password: form.password })
@@ -25,10 +25,10 @@ const res = await fetch(`${API}/api/token/`, {
         localStorage.setItem('refresh', data.refresh)
         window.location.href = '/panel'
       } else {
-        setError('Email o contrasena incorrectos')
+        setError('Email o contraseña incorrectos')
       }
     } catch (err) {
-      setError('Error de conexion con el servidor')
+      setError('Error de conexión con el servidor')
     } finally {
       setCargando(false)
     }
@@ -42,7 +42,7 @@ const res = await fetch(`${API}/api/token/`, {
           tumaestro<span style={{ color: '#F97316' }}>.app</span>
         </span>
         <span style={{ color: '#93C5FD', fontSize: '14px' }}>
-          No tienes cuenta? <span onClick={() => window.location.href = '/registro'} style={{ color: '#fff', cursor: 'pointer', textDecoration: 'underline' }}>Registrate gratis</span>
+          ¿No tienes cuenta? <span onClick={() => window.location.href = '/registro'} style={{ color: '#fff', cursor: 'pointer', textDecoration: 'underline' }}>Regístrate gratis</span>
         </span>
       </nav>
 
@@ -50,7 +50,7 @@ const res = await fetch(`${API}/api/token/`, {
 
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>Bienvenido de vuelta</h1>
-          <p style={{ fontSize: '15px', color: '#6B7280' }}>Inicia sesion en tu cuenta</p>
+          <p style={{ fontSize: '15px', color: '#6B7280' }}>Inicia sesión en tu cuenta</p>
         </div>
 
         <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '32px' }}>
@@ -73,14 +73,18 @@ const res = await fetch(`${API}/api/token/`, {
           </div>
 
           <div style={{ marginBottom: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>Contrasena</label>
-              <span style={{ fontSize: '13px', color: '#1B3A6B', cursor: 'pointer' }}>Olvide mi contrasena</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>Contraseña</label>
+              <span
+                onClick={() => window.location.href = '/recuperar-password'}
+                style={{ fontSize: '12px', color: '#1B3A6B', cursor: 'pointer', textDecoration: 'underline' }}>
+                ¿Olvidaste tu contraseña?
+              </span>
             </div>
             <input
               value={form.password}
               onChange={e => actualizar('password', e.target.value)}
-              placeholder="Tu contrasena"
+              placeholder="Tu contraseña"
               type="password"
               onKeyDown={e => e.key === 'Enter' && iniciarSesion()}
               style={{ width: '100%', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '10px 14px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
@@ -92,12 +96,12 @@ const res = await fetch(`${API}/api/token/`, {
             disabled={cargando}
             style={{ background: cargando ? '#9CA3AF' : '#1B3A6B', border: 'none', color: '#fff', width: '100%', padding: '14px', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: cargando ? 'not-allowed' : 'pointer', marginBottom: '16px' }}
           >
-            {cargando ? 'Iniciando sesion...' : 'Iniciar sesion'}
+            {cargando ? 'Iniciando sesión...' : 'Iniciar sesión'}
           </button>
 
           <div style={{ textAlign: 'center' }}>
             <span style={{ fontSize: '14px', color: '#6B7280' }}>
-              No tienes cuenta? <span onClick={() => window.location.href = '/registro'} style={{ color: '#1B3A6B', fontWeight: '500', cursor: 'pointer' }}>Registrate gratis</span>
+              ¿No tienes cuenta? <span onClick={() => window.location.href = '/registro'} style={{ color: '#1B3A6B', fontWeight: '500', cursor: 'pointer' }}>Regístrate gratis</span>
             </span>
           </div>
 

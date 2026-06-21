@@ -127,3 +127,18 @@ class Resena(models.Model):
 
     def __str__(self):
         return f"Reseña de {self.nombre_cliente} para {self.contratista.nombre} — {self.rating}★"
+
+
+class PasswordResetToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    usado = models.BooleanField(default=False)
+
+    def is_valid(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        return not self.usado and (timezone.now() - self.creado_en) < timedelta(hours=2)
+
+    def __str__(self):
+        return f"Reset token para {self.user.email}"

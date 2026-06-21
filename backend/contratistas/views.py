@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .models import Contratista, Trabajo, Cliente, Cotizacion, ItemCotizacion, SolicitudCotizacion, Resena
+from .models import Contratista, Trabajo, Cliente, Cotizacion, ItemCotizacion, SolicitudCotizacion, Resena, PasswordResetToken
 from .serializers import ContratistaSerializer, TrabajoSerializer, ClienteSerializer, CotizacionSerializer, ItemCotizacionSerializer
 
 resend.api_key = os.environ.get('RESEND_API_KEY', '')
@@ -221,6 +221,33 @@ def enviar_email_resena_contratista(resena):
         print(f"Error enviando email reseña al contratista: {e}")
 
 
+def enviar_email_reset_password(user, token):
+    link = f"{FRONTEND_URL}/reset-password?token={token}"
+    try:
+        resend.Emails.send({
+            "from": "tumaestro.app <noreply@tumaestro.app>",
+            "to": user.email,
+            "subject": "🔑 Recupera tu contraseña - tumaestro.app",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+                <h2 style="color: #1B3A6B;">Recupera tu contraseña</h2>
+                <p>Hola <strong>{user.first_name}</strong>,</p>
+                <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en tumaestro.app.</p>
+                <p>Haz click en el botón para crear una nueva contraseña. Este link es válido por <strong>2 horas</strong>.</p>
+                <a href="{link}" style="display: inline-block; background: #F97316; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px; margin: 16px 0;">
+                    Restablecer contraseña →
+                </a>
+                <p style="color: #6B7280; font-size: 13px;">Si no solicitaste este cambio, puedes ignorar este email. Tu contraseña no cambiará.</p>
+                <p style="color: #9CA3AF; font-size: 12px; margin-top: 32px; border-top: 1px solid #E5E7EB; padding-top: 16px;">
+                    tumaestro.app — La plataforma para contratistas independientes en Chile
+                </p>
+            </div>
+            """
+        })
+    except Exception as e:
+        print(f"Error enviando email reset: {e}")
+
+
 # CLASES Y VISTAS
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -249,7 +276,6 @@ class RegistroView(APIView):
         nombre = data.get('nombre', '')
         apellido = data.get('apellido', '')
         oficios_lista = data.get('oficios', [])
-        # compatibilidad: si mandan oficio (string) y no oficios (lista)
         oficio_legacy = data.get('oficio', '')
         if not oficios_lista and oficio_legacy:
             oficios_lista = [oficio_legacy]
@@ -260,7 +286,7 @@ class RegistroView(APIView):
         descripcion = data.get('descripcion', '')
 
         if User.objects.filter(email=email).exists() or User.objects.filter(username=email).exists():
-            return Response({'error': 'Este email ya esta registrado'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Este email ya está registrado. ¿Ya tienes una cuenta? Inicia sesión.'}, status=status.HTTP_400_BAD_REQUEST)
 
         user = User.objects.create_user(
             username=email,
@@ -432,7 +458,7 @@ class CotizacionDetalleView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# ENDPOINTS PÚBLICOS — sin autenticación
+# ENDPOINTS PÚBLICOS
 
 @api_view(['GET'])
 def contratistas_publicos(request):
@@ -517,10 +543,7 @@ def mis_solicitudes(request):
     except Contratista.DoesNotExist:
         return Response([])
 
-    solicitudes = SolicitudCotizacion.objects.filter(
-        contratista=contratista
-    ).order_by('-creado_en')
-
+    solicitudes = SolicitudCotizacion.objects.filter(contratista=contratista).order_by('-creado_en')
     data = [{
         'id': s.id,
         'nombre_cliente': s.nombre_cliente,
@@ -593,14 +616,12 @@ def cotizacion_publica(request, token):
             'nombre': f'{contratista.first_name} {contratista.last_name}'.strip(),
             'email': contratista.email,
         },
-        'items': [
-            {
-                'descripcion': i.descripcion,
-                'cantidad': i.cantidad,
-                'precio_unitario': i.precio_unitario,
-                'subtotal': i.subtotal,
-            } for i in items
-        ]
+        'items': [{
+            'descripcion': i.descripcion,
+            'cantidad': i.cantidad,
+            'precio_unitario': i.precio_unitario,
+            'subtotal': i.subtotal,
+        } for i in items]
     })
 
 
@@ -756,18 +777,15 @@ class ConfiguracionView(APIView):
         except Contratista.DoesNotExist:
             return Response({'error': 'No encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Campos simples
         for campo in ['descripcion', 'comuna', 'comunas', 'experiencia', 'telefono', 'activo']:
             if campo in request.data:
                 setattr(contratista, campo, request.data[campo])
 
-        # Oficios: sincronizar oficios[] y oficio (principal)
         if 'oficios' in request.data:
-            oficios_lista = request.data['oficios'][:3]  # máximo 3
+            oficios_lista = request.data['oficios'][:3]
             contratista.oficios = oficios_lista
             contratista.oficio = oficios_lista[0] if oficios_lista else ''
         elif 'oficio' in request.data:
-            # compatibilidad: si solo mandan oficio string
             contratista.oficio = request.data['oficio']
 
         contratista.save()
@@ -804,3 +822,54 @@ def eliminar_cuenta(request):
 
     request.user.delete()
     return Response({'mensaje': 'Cuenta eliminada permanentemente'})
+
+
+# RESET PASSWORD
+
+@api_view(['POST'])
+def solicitar_reset_password(request):
+    email = request.data.get('email', '').strip().lower()
+    if not email:
+        return Response({'error': 'El email es requerido'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        # Respuesta genérica por seguridad
+        return Response({'mensaje': 'Si ese email está registrado, recibirás un link en tu correo.'})
+
+    # Invalidar tokens anteriores
+    PasswordResetToken.objects.filter(user=user, usado=False).update(usado=True)
+
+    # Crear nuevo token y enviar email
+    reset_token = PasswordResetToken.objects.create(user=user)
+    enviar_email_reset_password(user, reset_token.token)
+
+    return Response({'mensaje': 'Si ese email está registrado, recibirás un link en tu correo.'})
+
+
+@api_view(['POST'])
+def reset_password(request):
+    token_str = request.data.get('token', '')
+    password_nuevo = request.data.get('password', '')
+
+    if not token_str or not password_nuevo:
+        return Response({'error': 'Token y contraseña son requeridos'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if len(password_nuevo) < 8:
+        return Response({'error': 'La contraseña debe tener al menos 8 caracteres'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        reset_token = PasswordResetToken.objects.get(token=token_str)
+    except PasswordResetToken.DoesNotExist:
+        return Response({'error': 'Link inválido o expirado'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not reset_token.is_valid():
+        return Response({'error': 'Este link ya fue usado o expiró. Solicita uno nuevo.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    reset_token.user.set_password(password_nuevo)
+    reset_token.user.save()
+    reset_token.usado = True
+    reset_token.save()
+
+    return Response({'mensaje': 'Contraseña actualizada correctamente'})
