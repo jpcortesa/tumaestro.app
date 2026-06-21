@@ -28,7 +28,7 @@ function validarTelefonoChile(num) {
   return /^9\d{8}$/.test(num.replace(/\s/g, ''))
 }
 
-function ModalAviso({ onAceptar }) {
+function ModalAviso({ onAceptar, onCerrar }) {
   const [leido, setLeido] = useState(false)
 
   const puntos = [
@@ -51,7 +51,15 @@ function ModalAviso({ onAceptar }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '24px' }}>
-      <div style={{ background: '#fff', borderRadius: '20px', padding: '36px', maxWidth: '520px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+      <div style={{ background: '#fff', borderRadius: '20px', padding: '36px', maxWidth: '520px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', position: 'relative' }}>
+
+        {/* BOTÓN CERRAR */}
+        <button
+          onClick={onCerrar}
+          style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '24px', color: '#9CA3AF', lineHeight: 1, padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          title="Cerrar">
+          ×
+        </button>
 
         {/* Encabezado */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
@@ -73,7 +81,7 @@ function ModalAviso({ onAceptar }) {
           ))}
         </div>
 
-        {/* Checkbox confirmación */}
+        {/* Checkbox */}
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', marginBottom: '20px' }}>
           <input
             type="checkbox"
@@ -89,18 +97,7 @@ function ModalAviso({ onAceptar }) {
         <button
           onClick={onAceptar}
           disabled={!leido}
-          style={{
-            width: '100%',
-            padding: '14px',
-            background: leido ? '#1B3A6B' : '#D1D5DB',
-            color: leido ? '#fff' : '#9CA3AF',
-            border: 'none',
-            borderRadius: '10px',
-            fontSize: '15px',
-            fontWeight: '600',
-            cursor: leido ? 'pointer' : 'not-allowed',
-            transition: 'background 0.2s'
-          }}>
+          style={{ width: '100%', padding: '14px', background: leido ? '#1B3A6B' : '#D1D5DB', color: leido ? '#fff' : '#9CA3AF', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: leido ? 'pointer' : 'not-allowed', transition: 'background 0.2s' }}>
           Entendido, continuar con el registro →
         </button>
 
@@ -224,7 +221,12 @@ export default function Registro() {
     <div style={{ minHeight: '100vh', background: '#F8F9FA' }}>
 
       {/* MODAL AVISO */}
-      {mostrarAviso && <ModalAviso onAceptar={() => setMostrarAviso(false)} />}
+      {mostrarAviso && (
+        <ModalAviso
+          onAceptar={() => setMostrarAviso(false)}
+          onCerrar={() => window.location.href = '/'}
+        />
+      )}
 
       <nav style={{ background: '#1B3A6B', padding: '0 48px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span onClick={() => window.location.href = '/'} style={{ color: '#fff', fontSize: '20px', fontWeight: '600', cursor: 'pointer' }}>tumaestro<span style={{ color: '#F97316' }}>.app</span></span>
