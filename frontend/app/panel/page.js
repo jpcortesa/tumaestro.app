@@ -144,7 +144,6 @@ export default function Panel() {
     setFormCliente({ nombre: s.nombre_cliente, telefono: s.telefono_cliente, email: s.email_cliente || '', direccion: '', comuna: '' })
     setClienteEditando(null)
     setShowModalCliente(true)
-    // marcar como leída automáticamente al crear cliente
     if (!s.leida) marcarLeida(s.id)
   }
 
@@ -193,13 +192,10 @@ export default function Panel() {
   }
 
   async function cambiarEstadoCotizacion(id, nuevoEstado) {
-    const res = await fetch(`${API}/api/cotizaciones/${id}/`, { method: 'PATCH', headers: headers(), body: JSON.stringify({ estado: nuevoEstado }) })
-    await res.json()
+    await fetch(`${API}/api/cotizaciones/${id}/`, { method: 'PATCH', headers: headers(), body: JSON.stringify({ estado: nuevoEstado }) })
     fetchCotizaciones()
     if (nuevoEstado === 'aprobada') fetchTrabajos()
-    if (nuevoEstado === 'enviada') {
-      setShowModalCotizacionEnviada(true)
-    }
+    if (nuevoEstado === 'enviada') setShowModalCotizacionEnviada(true)
   }
 
   async function fetchSolicitudes() {
@@ -215,7 +211,6 @@ export default function Panel() {
   }
 
   async function descartarSolicitud(id) {
-    // descartar marca automáticamente como leída en el backend
     await fetch(`${API}/api/mis-solicitudes/${id}/descartar/`, { method: 'PATCH', headers: headers() })
     fetchSolicitudes()
   }
@@ -241,8 +236,7 @@ export default function Panel() {
   }
 
   async function guardarConfig() {
-    setGuardandoConfig(true)
-    setMsgConfig(null)
+    setGuardandoConfig(true); setMsgConfig(null)
     const res = await fetch(`${API}/api/configuracion/`, {
       method: 'PATCH', headers: headers(),
       body: JSON.stringify({ ...formConfig, experiencia: parseInt(formConfig.experiencia) || 0 })
@@ -296,6 +290,9 @@ export default function Panel() {
   const quitarItem = (idx) => setItems(items.filter((_, i) => i !== idx))
   const actualizarItem = (idx, campo, valor) => setItems(items.map((item, i) => i === idx ? { ...item, [campo]: valor } : item))
 
+  // cliente seleccionado en modal cotización
+  const clienteSeleccionado = clientesReal.find(c => String(c.id) === String(formCotizacion.cliente))
+
   if (!autorizado) return (
     <div style={{ minHeight: '100vh', background: '#F8F9FA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <p style={{ color: '#6B7280', fontSize: '14px' }}>Verificando sesion...</p>
@@ -326,9 +323,7 @@ export default function Panel() {
         <div style={{ padding: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
           <span style={{ color: '#fff', fontSize: '18px', fontWeight: '600' }}>tumaestro<span style={{ color: '#F97316' }}>.app</span></span>
         </div>
-
         <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-          {/* PERFIL + LINKS ARRIBA */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', marginBottom: '8px' }}>
             <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#F97316', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '700', fontSize: '14px', flexShrink: 0 }}>CM</div>
             <div style={{ minWidth: 0 }}>
@@ -336,24 +331,21 @@ export default function Panel() {
               <p style={{ color: '#93C5FD', fontSize: '12px', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{usuario.email}</p>
             </div>
           </div>
-
-          {/* VER PERFIL Y CERRAR SESIÓN — ARRIBA */}
           <div style={{ marginBottom: '16px' }}>
-            <div onClick={() => window.location.href = '/'} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '6px 12px', borderRadius: '6px' }}
+            <div onClick={() => window.location.href = '/'}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '6px 12px', borderRadius: '6px' }}
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <span style={{ color: '#93C5FD', fontSize: '13px' }}>← Ver mi perfil público</span>
             </div>
-            <div onClick={cerrarSesion} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '6px 12px', borderRadius: '6px' }}
+            <div onClick={cerrarSesion}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '6px 12px', borderRadius: '6px' }}
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <span style={{ color: '#FCA5A5', fontSize: '13px' }}>✕ Cerrar sesión</span>
             </div>
           </div>
-
           <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', marginBottom: '16px' }} />
-
-          {/* NAVEGACIÓN */}
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {menuItems.map(item => (
               <div key={item.key} onClick={() => {
@@ -401,7 +393,7 @@ export default function Panel() {
           </div>
         </div>
 
-        {/* MODAL COTIZACIÓN ENVIADA — sin link, solo confirmación */}
+        {/* MODAL COTIZACIÓN ENVIADA */}
         {showModalCotizacionEnviada && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
             <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '480px', display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'center' }}>
@@ -415,8 +407,7 @@ export default function Panel() {
                   💡 Si lo deseas, también puedes contactar directamente al cliente para avisarle que tiene una cotización pendiente.
                 </p>
               </div>
-              <button
-                onClick={() => setShowModalCotizacionEnviada(false)}
+              <button onClick={() => setShowModalCotizacionEnviada(false)}
                 style={{ padding: '12px', background: '#1B3A6B', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '15px' }}>
                 Entendido
               </button>
@@ -445,8 +436,10 @@ export default function Panel() {
               </div>
               <div><label style={labelStyle}>Dirección</label><input type="text" value={formCliente.direccion} onChange={e => setFormCliente({ ...formCliente, direccion: e.target.value })} style={inputStyle} /></div>
               <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                <button onClick={() => { setShowModalCliente(false); setClienteEditando(null); setFormCliente({ nombre: '', telefono: '', email: '', direccion: '', comuna: '' }) }} style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>Cancelar</button>
-                <button onClick={clienteEditando ? editarCliente : crearCliente} style={{ flex: 1, padding: '10px', background: '#F97316', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
+                <button onClick={() => { setShowModalCliente(false); setClienteEditando(null); setFormCliente({ nombre: '', telefono: '', email: '', direccion: '', comuna: '' }) }}
+                  style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>Cancelar</button>
+                <button onClick={clienteEditando ? editarCliente : crearCliente}
+                  style={{ flex: 1, padding: '10px', background: '#F97316', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
                   {clienteEditando ? 'Guardar cambios' : 'Guardar cliente'}
                 </button>
               </div>
@@ -468,7 +461,8 @@ export default function Panel() {
                 <input type="password" value={passwordEliminar} onChange={e => setPasswordEliminar(e.target.value)} placeholder="Tu contraseña actual" style={inputStyle} />
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={() => { setShowConfirmEliminar(false); setPasswordEliminar('') }} style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>Cancelar</button>
+                <button onClick={() => { setShowConfirmEliminar(false); setPasswordEliminar('') }}
+                  style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>Cancelar</button>
                 <button onClick={eliminarCuenta} disabled={eliminando || !passwordEliminar}
                   style={{ flex: 1, padding: '10px', background: eliminando ? '#9CA3AF' : '#DC2626', color: 'white', border: 'none', borderRadius: '8px', cursor: eliminando ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '14px' }}>
                   {eliminando ? 'Eliminando...' : 'Eliminar cuenta'}
@@ -606,7 +600,6 @@ export default function Panel() {
                         {new Date(s.creado_en).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
-                    {/* SOLO 2 BOTONES: Crear cliente y Descartar. Ambos marcan como leída. */}
                     {!s.descartada && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
                         <button onClick={() => crearClienteDesdeSolicitud(s)}
@@ -626,7 +619,7 @@ export default function Panel() {
           </div>
         )}
 
-        {/* SECCIÓN TRABAJOS — sin botón "Nuevo trabajo" */}
+        {/* SECCIÓN TRABAJOS */}
         {seccion === 'trabajos' && (
           <div style={{ padding: '32px' }}>
             <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '10px', padding: '14px 20px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -769,13 +762,34 @@ export default function Panel() {
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, overflowY: 'auto', padding: '24px' }}>
                 <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '600px', display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '90vh', overflowY: 'auto' }}>
                   <h2 style={{ fontWeight: 700, color: '#1B3A6B', margin: 0 }}>{cotizacionEditando ? 'Editar Cotización' : 'Nueva Cotización'}</h2>
-                  <div><label style={labelStyle}>Cliente</label>
-                    <select value={formCotizacion.cliente} onChange={e => setFormCotizacion({ ...formCotizacion, cliente: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
+
+                  {/* SELECTOR CLIENTE CON DATOS */}
+                  <div>
+                    <label style={labelStyle}>Cliente</label>
+                    <select
+                      value={formCotizacion.cliente}
+                      onChange={e => setFormCotizacion({ ...formCotizacion, cliente: e.target.value })}
+                      style={{ ...inputStyle, background: '#fff' }}>
                       <option value="">Selecciona un cliente</option>
                       {clientesReal.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                     </select>
+                    {clienteSeleccionado && (
+                      <div style={{ marginTop: '8px', padding: '10px 12px', background: '#F8F9FA', borderRadius: '8px', border: '1px solid #F3F4F6', display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+                        {clienteSeleccionado.telefono && (
+                          <span style={{ fontSize: '12px', color: '#9CA3AF' }}>📞 {clienteSeleccionado.telefono}</span>
+                        )}
+                        {clienteSeleccionado.email && (
+                          <span style={{ fontSize: '12px', color: '#9CA3AF' }}>✉️ {clienteSeleccionado.email}</span>
+                        )}
+                        {clienteSeleccionado.comuna && (
+                          <span style={{ fontSize: '12px', color: '#9CA3AF' }}>📍 {clienteSeleccionado.comuna}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div><label style={labelStyle}>Descripción general</label>
+
+                  <div>
+                    <label style={labelStyle}>Descripción general</label>
                     <input type="text" value={formCotizacion.descripcion} onChange={e => setFormCotizacion({ ...formCotizacion, descripcion: e.target.value })} style={inputStyle} placeholder="Ej: Reparación sistema eléctrico" />
                   </div>
                   <div>
@@ -825,8 +839,10 @@ export default function Panel() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                    <button onClick={() => { setShowModalCotizacion(false); setCotizacionEditando(null); setItems([itemVacio()]) }} style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>Cancelar</button>
-                    <button onClick={cotizacionEditando ? editarCotizacion : crearCotizacion} style={{ flex: 1, padding: '10px', background: '#F97316', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
+                    <button onClick={() => { setShowModalCotizacion(false); setCotizacionEditando(null); setItems([itemVacio()]) }}
+                      style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>Cancelar</button>
+                    <button onClick={cotizacionEditando ? editarCotizacion : crearCotizacion}
+                      style={{ flex: 1, padding: '10px', background: '#F97316', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
                       {cotizacionEditando ? 'Guardar cambios' : 'Guardar cotización'}
                     </button>
                   </div>
