@@ -189,7 +189,7 @@ export default function Home() {
             <p style={{ fontSize: '12px', fontWeight: '600', color: '#93C5FD', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Para profesionales</p>
             <h2 style={{ fontSize: '28px', fontWeight: '700', color: '#fff', marginBottom: '12px' }}>¿Eres contratista?<br />Haz crecer tu negocio.</h2>
             <div style={{ display: 'flex', gap: '20px' }}>
-              {['Sin costo de registro', 'Sin comisiones', 'Maestros verificados'].map(t => (
+              {['Sin costo de registro', 'Sin comisiones', 'Contratistas verificados'].map(t => (
                 <span key={t} style={{ fontSize: '14px', color: '#93C5FD', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ color: '#34D399' }}>✓</span> {t}
                 </span>

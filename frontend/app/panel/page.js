@@ -2,19 +2,10 @@
 
 import { useEffect, useState } from 'react'
 
-const trabajosDemo = [
-  { id: 1, cliente: 'Maria Gonzalez', trabajo: 'Reparacion calefon', comuna: 'Las Condes', fecha: 'Hoy 14:30', estado: 'En progreso', monto: '$45.000' },
-  { id: 2, cliente: 'Roberto Sanchez', trabajo: 'Instalacion ducha', comuna: 'Providencia', fecha: 'Manana 10:00', estado: 'Pendiente', monto: '$85.000' },
-  { id: 3, cliente: 'Carmen Valdes', trabajo: 'Reparacion caneria', comuna: 'Nunoa', fecha: 'Ayer', estado: 'Completado', monto: '$35.000' },
-  { id: 4, cliente: 'Jorge Perez', trabajo: 'Cambio llave paso', comuna: 'Las Condes', fecha: 'Ayer', estado: 'Completado', monto: '$25.000' },
-  { id: 5, cliente: 'Richard Martinez', trabajo: 'Instalacion calefon', comuna: 'Vitacura', fecha: '03/06/2026', estado: 'Cotizacion', monto: '$120.000' },
-]
-
-const estadoColor = {
-  'En progreso': { bg: '#FEF3C7', color: '#92400E' },
-  'Pendiente': { bg: '#EEF2FF', color: '#3730A3' },
-  'Completado': { bg: '#ECFDF5', color: '#065F46' },
-  'Cotizacion': { bg: '#F3F4F6', color: '#374151' },
+const estadoColorReal = {
+  pendiente: { bg: '#EEF2FF', color: '#3730A3', label: 'Pendiente' },
+  en_progreso: { bg: '#FEF3C7', color: '#92400E', label: 'En progreso' },
+  completado: { bg: '#ECFDF5', color: '#065F46', label: 'Completado' },
 }
 
 const estadoColorCotizacion = {
@@ -52,13 +43,14 @@ export default function Panel() {
   const [seccion, setSeccion] = useState('dashboard')
 
   const [trabajosReal, setTrabajosReal] = useState([])
+  const [cotizacionesReal, setCotizacionesReal] = useState([])
+  const [dashboardCargando, setDashboardCargando] = useState(true)
 
   const [clientesReal, setClientesReal] = useState([])
   const [showModalCliente, setShowModalCliente] = useState(false)
   const [formCliente, setFormCliente] = useState({ nombre: '', telefono: '', email: '', direccion: '', comuna: '' })
   const [clienteEditando, setClienteEditando] = useState(null)
 
-  const [cotizacionesReal, setCotizacionesReal] = useState([])
   const [showModalCotizacion, setShowModalCotizacion] = useState(false)
   const [formCotizacion, setFormCotizacion] = useState({ cliente: '', descripcion: '', detalle: '', incluye_iva: false, tipo_impuesto: 'ninguno' })
   const [items, setItems] = useState([itemVacio()])
@@ -82,31 +74,40 @@ export default function Panel() {
   const [passwordEliminar, setPasswordEliminar] = useState('')
   const [showConfirmEliminar, setShowConfirmEliminar] = useState(false)
 
+  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+  const token = () => localStorage.getItem('token')
+  const headers = () => ({ 'Authorization': `Bearer ${token()}`, 'Content-Type': 'application/json' })
+
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) { window.location.replace('/login'); return }
-    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-    fetch(`${API}/api/perfil/`, { headers: { 'Authorization': `Bearer ${token}` } })
+    const tk = localStorage.getItem('token')
+    if (!tk) { window.location.replace('/login'); return }
+    fetch(`${API}/api/perfil/`, { headers: { 'Authorization': `Bearer ${tk}` } })
       .then(res => { if (!res.ok) { localStorage.removeItem('token'); window.location.replace('/login'); return } return res.json() })
       .then(data => {
         if (data) {
           setUsuario(data)
           setAutorizado(true)
-          fetch(`${API}/api/mis-solicitudes/`, { headers: { 'Authorization': `Bearer ${token}` } })
-            .then(r => r.json())
-            .then(s => { setSolicitudes(s); setSolicitudesNoLeidas(s.filter(x => !x.leida && !x.descartada).length) })
+          // Carga inicial del dashboard: trabajos + cotizaciones + solicitudes en paralelo
+          Promise.all([
+            fetch(`${API}/api/trabajos/`, { headers: { 'Authorization': `Bearer ${tk}` } }).then(r => r.json()),
+            fetch(`${API}/api/cotizaciones/`, { headers: { 'Authorization': `Bearer ${tk}` } }).then(r => r.json()),
+            fetch(`${API}/api/mis-solicitudes/`, { headers: { 'Authorization': `Bearer ${tk}` } }).then(r => r.json()),
+          ]).then(([trabajos, cotizaciones, sols]) => {
+            setTrabajosReal(Array.isArray(trabajos) ? trabajos : [])
+            setCotizacionesReal(Array.isArray(cotizaciones) ? cotizaciones : [])
+            setSolicitudes(Array.isArray(sols) ? sols : [])
+            setSolicitudesNoLeidas((Array.isArray(sols) ? sols : []).filter(x => !x.leida && !x.descartada).length)
+            setDashboardCargando(false)
+          }).catch(() => setDashboardCargando(false))
         }
       })
       .catch(() => window.location.replace('/login'))
   }, [])
 
-  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-  const token = () => localStorage.getItem('token')
-  const headers = () => ({ 'Authorization': `Bearer ${token()}`, 'Content-Type': 'application/json' })
-
   async function fetchTrabajos() {
     const res = await fetch(`${API}/api/trabajos/`, { headers: { 'Authorization': `Bearer ${token()}` } })
-    setTrabajosReal(await res.json())
+    const data = await res.json()
+    setTrabajosReal(Array.isArray(data) ? data : [])
   }
 
   async function cambiarEstadoDirecto(id, nuevoEstado) {
@@ -122,8 +123,7 @@ export default function Panel() {
   async function crearCliente() {
     const res = await fetch(`${API}/api/clientes/`, { method: 'POST', headers: headers(), body: JSON.stringify(formCliente) })
     if (res.ok) {
-      setShowModalCliente(false)
-      setClienteEditando(null)
+      setShowModalCliente(false); setClienteEditando(null)
       setFormCliente({ nombre: '', telefono: '', email: '', direccion: '', comuna: '' })
       fetchClientes()
     }
@@ -136,20 +136,19 @@ export default function Panel() {
 
   function abrirEditarCliente(c) {
     setFormCliente({ nombre: c.nombre, telefono: c.telefono, email: c.email, direccion: c.direccion, comuna: c.comuna })
-    setClienteEditando(c.id)
-    setShowModalCliente(true)
+    setClienteEditando(c.id); setShowModalCliente(true)
   }
 
   function crearClienteDesdeSolicitud(s) {
     setFormCliente({ nombre: s.nombre_cliente, telefono: s.telefono_cliente, email: s.email_cliente || '', direccion: '', comuna: '' })
-    setClienteEditando(null)
-    setShowModalCliente(true)
+    setClienteEditando(null); setShowModalCliente(true)
     if (!s.leida) marcarLeida(s.id)
   }
 
   async function fetchCotizaciones() {
     const res = await fetch(`${API}/api/cotizaciones/`, { headers: { 'Authorization': `Bearer ${token()}` } })
-    setCotizacionesReal(await res.json())
+    const data = await res.json()
+    setCotizacionesReal(Array.isArray(data) ? data : [])
   }
 
   async function crearCotizacion() {
@@ -187,8 +186,7 @@ export default function Panel() {
     const tipo = c.incluye_iva ? 'iva' : 'ninguno'
     setFormCotizacion({ cliente: c.cliente, descripcion: c.descripcion, detalle: c.detalle || '', incluye_iva: c.incluye_iva, tipo_impuesto: tipo })
     setItems(c.items?.length > 0 ? c.items.map(i => ({ descripcion: i.descripcion, cantidad: i.cantidad, precio_unitario: i.precio_unitario })) : [itemVacio()])
-    setCotizacionEditando(c.id)
-    setShowModalCotizacion(true)
+    setCotizacionEditando(c.id); setShowModalCotizacion(true)
   }
 
   async function cambiarEstadoCotizacion(id, nuevoEstado) {
@@ -201,8 +199,7 @@ export default function Panel() {
   async function fetchSolicitudes() {
     const res = await fetch(`${API}/api/mis-solicitudes/`, { headers: { 'Authorization': `Bearer ${token()}` } })
     const data = await res.json()
-    setSolicitudes(data)
-    setSolicitudesNoLeidas(data.filter(x => !x.leida && !x.descartada).length)
+    setSolicitudes(data); setSolicitudesNoLeidas(data.filter(x => !x.leida && !x.descartada).length)
   }
 
   async function marcarLeida(id) {
@@ -224,15 +221,7 @@ export default function Panel() {
     const res = await fetch(`${API}/api/configuracion/`, { headers: { 'Authorization': `Bearer ${token()}` } })
     const data = await res.json()
     setConfig(data)
-    setFormConfig({
-      oficio: data.oficio || '',
-      descripcion: data.descripcion || '',
-      comuna: data.comuna || '',
-      comunas: data.comunas || [],
-      experiencia: data.experiencia || '',
-      telefono: data.telefono || '',
-      activo: data.activo,
-    })
+    setFormConfig({ oficio: data.oficio || '', descripcion: data.descripcion || '', comuna: data.comuna || '', comunas: data.comunas || [], experiencia: data.experiencia || '', telefono: data.telefono || '', activo: data.activo })
   }
 
   async function guardarConfig() {
@@ -264,8 +253,7 @@ export default function Panel() {
   async function eliminarCuenta() {
     setEliminando(true)
     const res = await fetch(`${API}/api/configuracion/eliminar-cuenta/`, {
-      method: 'DELETE', headers: headers(),
-      body: JSON.stringify({ password: passwordEliminar })
+      method: 'DELETE', headers: headers(), body: JSON.stringify({ password: passwordEliminar })
     })
     setEliminando(false)
     if (res.ok) { localStorage.removeItem('token'); localStorage.removeItem('refresh'); window.location.href = '/' }
@@ -291,6 +279,27 @@ export default function Panel() {
   const actualizarItem = (idx, campo, valor) => setItems(items.map((item, i) => i === idx ? { ...item, [campo]: valor } : item))
 
   const clienteSeleccionado = clientesReal.find(c => String(c.id) === String(formCotizacion.cliente))
+
+  // ── MÉTRICAS DASHBOARD (datos reales) ──────────────────────────────
+  const mesActual = new Date().getMonth()
+  const añoActual = new Date().getFullYear()
+
+  const trabajosActivos = trabajosReal.filter(t => t.estado === 'pendiente' || t.estado === 'en_progreso').length
+  const cotizacionesPendientes = cotizacionesReal.filter(c => c.estado === 'borrador' || c.estado === 'enviada').length
+  const ingresosMes = trabajosReal
+    .filter(t => {
+      if (t.estado !== 'completado') return false
+      const fecha = new Date(t.fecha || t.creado_en || t.updated_at)
+      return fecha.getMonth() === mesActual && fecha.getFullYear() === añoActual
+    })
+    .reduce((acc, t) => acc + (parseInt(t.monto) || 0), 0)
+
+  const trabajosRecientes = [...trabajosReal].slice(0, 5)
+  const proximosTrabajos = trabajosReal.filter(t => t.estado === 'pendiente' || t.estado === 'en_progreso').slice(0, 4)
+
+  // Fecha actual dinámica
+  const fechaHoy = new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const fechaCapitalizada = fechaHoy.charAt(0).toUpperCase() + fechaHoy.slice(1)
 
   if (!autorizado) return (
     <div style={{ minHeight: '100vh', background: '#F8F9FA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -324,7 +333,9 @@ export default function Panel() {
         </div>
         <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', marginBottom: '8px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#F97316', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '700', fontSize: '14px', flexShrink: 0 }}>CM</div>
+            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#F97316', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '700', fontSize: '14px', flexShrink: 0 }}>
+              {usuario.nombre ? usuario.nombre.slice(0, 2).toUpperCase() : 'CM'}
+            </div>
             <div style={{ minWidth: 0 }}>
               <p style={{ color: '#fff', fontSize: '14px', fontWeight: '500', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{usuario.nombre || 'Mi cuenta'}</p>
               <p style={{ color: '#93C5FD', fontSize: '12px', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{usuario.email}</p>
@@ -382,13 +393,15 @@ export default function Panel() {
               {seccion === 'resenas' && 'Reseñas'}
               {seccion === 'configuracion' && 'Configuración'}
             </h1>
-            <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Lunes 15 de junio, 2026</p>
+            <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>{fechaCapitalizada}</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
               <span style={{ fontSize: '16px' }}>🔔</span>
             </div>
-            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#1B3A6B', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '600', fontSize: '13px' }}>CM</div>
+            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#1B3A6B', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '600', fontSize: '13px' }}>
+              {usuario.nombre ? usuario.nombre.slice(0, 2).toUpperCase() : 'CM'}
+            </div>
           </div>
         </div>
 
@@ -471,95 +484,121 @@ export default function Panel() {
           </div>
         )}
 
-        {/* SECCIÓN DASHBOARD */}
+        {/* ── SECCIÓN DASHBOARD ── */}
         {seccion === 'dashboard' && (
           <div style={{ padding: '32px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '32px' }}>
-              {[
-                { label: 'Trabajos activos', valor: '3', icono: '⚒', color: '#EEF2FF', texto: '#1B3A6B' },
-                { label: 'Cotizaciones pendientes', valor: '2', icono: '📋', color: '#FEF3C7', texto: '#92400E' },
-                { label: 'Ingresos del mes', valor: '$285.000', icono: '💰', color: '#ECFDF5', texto: '#065F46' },
-                { label: 'Solicitudes nuevas', valor: String(solicitudesNoLeidas), icono: '📩', color: '#FFF7ED', texto: '#C2410C' },
-              ].map(m => (
-                <div key={m.label} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '12px', padding: '20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <span style={{ fontSize: '13px', color: '#6B7280' }}>{m.label}</span>
-                    <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>{m.icono}</div>
-                  </div>
-                  <p style={{ fontSize: '24px', fontWeight: '700', color: m.texto, margin: 0 }}>{m.valor}</p>
-                </div>
-              ))}
-            </div>
-            <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-                <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>Trabajos recientes</h2>
-                <button onClick={() => { setSeccion('trabajos'); fetchTrabajos() }} style={{ background: 'transparent', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '6px 14px', fontSize: '13px', color: '#374151', cursor: 'pointer' }}>Ver todos</button>
-              </div>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #F3F4F6' }}>
-                    {['Cliente', 'Trabajo', 'Comuna', 'Fecha', 'Estado', 'Monto'].map(h => (
-                      <th key={h} style={{ textAlign: 'left', padding: '8px 12px', fontSize: '12px', fontWeight: '500', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {trabajosDemo.map(t => (
-                    <tr key={t.id} style={{ borderBottom: '1px solid #F9FAFB' }}>
-                      <td style={{ padding: '12px', fontSize: '14px', fontWeight: '500', color: '#111827' }}>{t.cliente}</td>
-                      <td style={{ padding: '12px', fontSize: '14px', color: '#374151' }}>{t.trabajo}</td>
-                      <td style={{ padding: '12px', fontSize: '14px', color: '#6B7280' }}>{t.comuna}</td>
-                      <td style={{ padding: '12px', fontSize: '14px', color: '#6B7280' }}>{t.fecha}</td>
-                      <td style={{ padding: '12px' }}>
-                        <span style={{ background: estadoColor[t.estado]?.bg, color: estadoColor[t.estado]?.color, fontSize: '12px', padding: '4px 10px', borderRadius: '999px', fontWeight: '500' }}>{t.estado}</span>
-                      </td>
-                      <td style={{ padding: '12px', fontSize: '14px', fontWeight: '600', color: '#111827' }}>{t.monto}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-              <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px' }}>
-                <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Próximos trabajos</h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {trabajosDemo.filter(t => t.estado === 'Pendiente' || t.estado === 'En progreso').map(t => (
-                    <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: '#F8F9FA', borderRadius: '10px' }}>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: t.estado === 'En progreso' ? '#F97316' : '#1B3A6B', flexShrink: 0 }}></div>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ fontSize: '14px', fontWeight: '500', color: '#111827', margin: '0 0 2px' }}>{t.cliente}</p>
-                        <p style={{ fontSize: '12px', color: '#6B7280', margin: 0 }}>{t.trabajo} · {t.fecha}</p>
+
+            {dashboardCargando ? (
+              <div style={{ textAlign: 'center', padding: '4rem', color: '#6B7280' }}>Cargando datos...</div>
+            ) : (
+              <>
+                {/* MÉTRICAS */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '32px' }}>
+                  {[
+                    { label: 'Trabajos activos', valor: String(trabajosActivos), icono: '⚒', color: '#EEF2FF', texto: '#1B3A6B' },
+                    { label: 'Cotizaciones pendientes', valor: String(cotizacionesPendientes), icono: '📋', color: '#FEF3C7', texto: '#92400E' },
+                    { label: 'Ingresos del mes', valor: ingresosMes > 0 ? `$${ingresosMes.toLocaleString('es-CL')}` : '$0', icono: '💰', color: '#ECFDF5', texto: '#065F46' },
+                    { label: 'Solicitudes nuevas', valor: String(solicitudesNoLeidas), icono: '📩', color: '#FFF7ED', texto: '#C2410C' },
+                  ].map(m => (
+                    <div key={m.label} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '12px', padding: '20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                        <span style={{ fontSize: '13px', color: '#6B7280' }}>{m.label}</span>
+                        <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>{m.icono}</div>
                       </div>
-                      <span style={{ fontSize: '13px', fontWeight: '600', color: '#1B3A6B' }}>{t.monto}</span>
+                      <p style={{ fontSize: '24px', fontWeight: '700', color: m.texto, margin: 0 }}>{m.valor}</p>
                     </div>
                   ))}
                 </div>
-              </div>
-              <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                  <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>Solicitudes recientes</h2>
-                  {solicitudesNoLeidas > 0 && <span style={{ background: '#F97316', color: '#fff', fontSize: '11px', fontWeight: 700, borderRadius: '999px', padding: '2px 8px' }}>{solicitudesNoLeidas} nuevas</span>}
-                </div>
-                {solicitudes.filter(s => !s.descartada).length === 0 ? (
-                  <p style={{ fontSize: '13px', color: '#9CA3AF' }}>No hay solicitudes aún.</p>
-                ) : solicitudes.filter(s => !s.descartada).slice(0, 3).map(s => (
-                  <div key={s.id} style={{ padding: '12px', background: s.leida ? '#F8F9FA' : '#FFF7ED', borderRadius: '10px', marginBottom: '8px', border: s.leida ? 'none' : '1px solid #FED7AA' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontWeight: 600, fontSize: '14px', color: '#111827' }}>{s.nombre_cliente}</span>
-                      {!s.leida && <span style={{ fontSize: '11px', color: '#F97316', fontWeight: 600 }}>● Nueva</span>}
-                    </div>
-                    <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 4px' }}>📞 {s.telefono_cliente}</p>
-                    {s.email_cliente && <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 4px' }}>✉️ {s.email_cliente}</p>}
-                    <p style={{ fontSize: '13px', color: '#374151', margin: 0 }}>{s.descripcion.slice(0, 80)}{s.descripcion.length > 80 ? '...' : ''}</p>
+
+                {/* TRABAJOS RECIENTES */}
+                <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                    <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>Trabajos recientes</h2>
+                    <button onClick={() => { setSeccion('trabajos'); fetchTrabajos() }} style={{ background: 'transparent', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '6px 14px', fontSize: '13px', color: '#374151', cursor: 'pointer' }}>Ver todos</button>
                   </div>
-                ))}
-                {solicitudes.filter(s => !s.descartada).length > 0 && (
-                  <button onClick={() => { setSeccion('solicitudes'); fetchSolicitudes() }} style={{ background: 'none', border: 'none', color: '#1B3A6B', fontSize: '13px', cursor: 'pointer', padding: 0, marginTop: '8px' }}>
-                    Ver todas →
-                  </button>
-                )}
-              </div>
-            </div>
+                  {trabajosRecientes.length === 0 ? (
+                    <p style={{ color: '#9CA3AF', fontSize: '14px', textAlign: 'center', padding: '2rem 0' }}>No hay trabajos aún. Se generan cuando un cliente aprueba una cotización.</p>
+                  ) : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid #F3F4F6' }}>
+                          {['Cliente', 'Descripción', 'Comuna', 'Fecha', 'Estado', 'Monto'].map(h => (
+                            <th key={h} style={{ textAlign: 'left', padding: '8px 12px', fontSize: '12px', fontWeight: '500', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {trabajosRecientes.map(t => {
+                          const est = estadoColorReal[t.estado] || { bg: '#F3F4F6', color: '#374151', label: t.estado }
+                          return (
+                            <tr key={t.id} style={{ borderBottom: '1px solid #F9FAFB' }}>
+                              <td style={{ padding: '12px', fontSize: '14px', fontWeight: '500', color: '#111827' }}>{t.cliente}</td>
+                              <td style={{ padding: '12px', fontSize: '14px', color: '#374151' }}>{t.descripcion}</td>
+                              <td style={{ padding: '12px', fontSize: '14px', color: '#6B7280' }}>{t.comuna || '—'}</td>
+                              <td style={{ padding: '12px', fontSize: '14px', color: '#6B7280' }}>
+                                {t.fecha ? new Date(t.fecha).toLocaleDateString('es-CL') : '—'}
+                              </td>
+                              <td style={{ padding: '12px' }}>
+                                <span style={{ background: est.bg, color: est.color, fontSize: '12px', padding: '4px 10px', borderRadius: '999px', fontWeight: '500' }}>{est.label}</span>
+                              </td>
+                              <td style={{ padding: '12px', fontSize: '14px', fontWeight: '600', color: '#111827' }}>${parseInt(t.monto || 0).toLocaleString('es-CL')}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+
+                {/* PRÓXIMOS TRABAJOS + SOLICITUDES */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                  <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px' }}>
+                    <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Próximos trabajos</h2>
+                    {proximosTrabajos.length === 0 ? (
+                      <p style={{ color: '#9CA3AF', fontSize: '13px' }}>No hay trabajos activos o pendientes.</p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {proximosTrabajos.map(t => (
+                          <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: '#F8F9FA', borderRadius: '10px' }}>
+                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: t.estado === 'en_progreso' ? '#F97316' : '#1B3A6B', flexShrink: 0 }}></div>
+                            <div style={{ flex: 1 }}>
+                              <p style={{ fontSize: '14px', fontWeight: '500', color: '#111827', margin: '0 0 2px' }}>{t.cliente}</p>
+                              <p style={{ fontSize: '12px', color: '#6B7280', margin: 0 }}>{t.descripcion} · {t.fecha ? new Date(t.fecha).toLocaleDateString('es-CL') : '—'}</p>
+                            </div>
+                            <span style={{ fontSize: '13px', fontWeight: '600', color: '#1B3A6B' }}>${parseInt(t.monto || 0).toLocaleString('es-CL')}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                      <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>Solicitudes recientes</h2>
+                      {solicitudesNoLeidas > 0 && <span style={{ background: '#F97316', color: '#fff', fontSize: '11px', fontWeight: 700, borderRadius: '999px', padding: '2px 8px' }}>{solicitudesNoLeidas} nuevas</span>}
+                    </div>
+                    {solicitudes.filter(s => !s.descartada).length === 0 ? (
+                      <p style={{ fontSize: '13px', color: '#9CA3AF' }}>No hay solicitudes aún.</p>
+                    ) : solicitudes.filter(s => !s.descartada).slice(0, 3).map(s => (
+                      <div key={s.id} style={{ padding: '12px', background: s.leida ? '#F8F9FA' : '#FFF7ED', borderRadius: '10px', marginBottom: '8px', border: s.leida ? 'none' : '1px solid #FED7AA' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                          <span style={{ fontWeight: 600, fontSize: '14px', color: '#111827' }}>{s.nombre_cliente}</span>
+                          {!s.leida && <span style={{ fontSize: '11px', color: '#F97316', fontWeight: 600 }}>● Nueva</span>}
+                        </div>
+                        <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 4px' }}>📞 {s.telefono_cliente}</p>
+                        {s.email_cliente && <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 4px' }}>✉️ {s.email_cliente}</p>}
+                        <p style={{ fontSize: '13px', color: '#374151', margin: 0 }}>{s.descripcion.slice(0, 80)}{s.descripcion.length > 80 ? '...' : ''}</p>
+                      </div>
+                    ))}
+                    {solicitudes.filter(s => !s.descartada).length > 0 && (
+                      <button onClick={() => { setSeccion('solicitudes'); fetchSolicitudes() }} style={{ background: 'none', border: 'none', color: '#1B3A6B', fontSize: '13px', cursor: 'pointer', padding: 0, marginTop: '8px' }}>
+                        Ver todas →
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -642,7 +681,7 @@ export default function Panel() {
                       <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: '14px' }}>{t.cliente}</td>
                       <td style={{ padding: '12px 16px', color: '#6B7280', fontSize: '14px' }}>{t.descripcion}</td>
                       <td style={{ padding: '12px 16px', fontSize: '14px' }}>{t.comuna}</td>
-                      <td style={{ padding: '12px 16px', fontSize: '14px' }}>{t.fecha}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '14px' }}>{t.fecha ? new Date(t.fecha).toLocaleDateString('es-CL') : '—'}</td>
                       <td style={{ padding: '12px 16px' }}>
                         {t.estado === 'completado' ? (
                           <span style={{ background: '#ECFDF5', color: '#065F46', padding: '4px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 600 }}>✓ Completado</span>
@@ -706,27 +745,19 @@ export default function Panel() {
         {/* SECCIÓN COTIZACIONES */}
         {seccion === 'cotizaciones' && (
           <div style={{ padding: '32px' }}>
-
-            {/* BANNER AVISO — igual estilo que trabajos */}
             <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '10px', padding: '14px 20px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ fontSize: '18px' }}>💡</span>
               <p style={{ fontSize: '13px', color: '#92400E', margin: 0 }}>
                 Antes de crear una cotización, asegúrate de haber registrado primero al cliente en la sección{' '}
-                <strong
-                  onClick={() => { setSeccion('clientes'); fetchClientes() }}
-                  style={{ cursor: 'pointer', textDecoration: 'underline' }}>
-                  Clientes
-                </strong>.
+                <strong onClick={() => { setSeccion('clientes'); fetchClientes() }} style={{ cursor: 'pointer', textDecoration: 'underline' }}>Clientes</strong>.
               </p>
             </div>
-
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
               <button onClick={() => { setCotizacionEditando(null); setFormCotizacion({ cliente: '', descripcion: '', detalle: '', incluye_iva: false, tipo_impuesto: 'ninguno' }); setItems([itemVacio()]); setShowModalCotizacion(true); fetchClientes() }}
                 style={{ background: '#F97316', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
                 + Nueva cotización
               </button>
             </div>
-
             <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
@@ -776,14 +807,9 @@ export default function Panel() {
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, overflowY: 'auto', padding: '24px' }}>
                 <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '600px', display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '90vh', overflowY: 'auto' }}>
                   <h2 style={{ fontWeight: 700, color: '#1B3A6B', margin: 0 }}>{cotizacionEditando ? 'Editar Cotización' : 'Nueva Cotización'}</h2>
-
-                  {/* SELECTOR CLIENTE CON DATOS */}
                   <div>
                     <label style={labelStyle}>Cliente</label>
-                    <select
-                      value={formCotizacion.cliente}
-                      onChange={e => setFormCotizacion({ ...formCotizacion, cliente: e.target.value })}
-                      style={{ ...inputStyle, background: '#fff' }}>
+                    <select value={formCotizacion.cliente} onChange={e => setFormCotizacion({ ...formCotizacion, cliente: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
                       <option value="">Selecciona un cliente</option>
                       {clientesReal.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                     </select>
@@ -795,7 +821,6 @@ export default function Panel() {
                       </div>
                     )}
                   </div>
-
                   <div>
                     <label style={labelStyle}>Descripción general</label>
                     <input type="text" value={formCotizacion.descripcion} onChange={e => setFormCotizacion({ ...formCotizacion, descripcion: e.target.value })} style={inputStyle} placeholder="Ej: Reparación sistema eléctrico" />
