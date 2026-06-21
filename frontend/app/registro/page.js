@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-const oficios = ['Gasfitero', 'Electricista', 'Pintor', 'Cerrajero', 'Maestro chasquilla', 'Carpintero', 'Jardinero', 'Albanil', 'Tecnico en climatizacion', 'Técnico en refrigeración', 'Instalador de pisos', 'Techador', 'Plomero', 'Otro']
+const LISTA_OFICIOS = ['Gasfitero', 'Electricista', 'Pintor', 'Cerrajero', 'Maestro chasquilla', 'Carpintero', 'Jardinero', 'Albanil', 'Tecnico en climatizacion', 'Técnico en refrigeración', 'Instalador de pisos', 'Techador', 'Plomero', 'Otro']
 
 const comunas = [
   'Cerrillos', 'Cerro Navia', 'Conchalí', 'El Bosque', 'Estación Central',
@@ -15,6 +15,7 @@ const comunas = [
 ]
 
 const TODAS_COMUNAS = 'Todas las comunas de Santiago'
+const MAX_OFICIOS = 3
 
 const inputStyle = { width: '100%', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '10px 14px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }
 const labelStyle = { fontSize: '13px', fontWeight: '500', color: '#374151', display: 'block', marginBottom: '6px' }
@@ -30,45 +31,20 @@ function validarTelefonoChile(num) {
 
 function ModalAviso({ onAceptar, onCerrar }) {
   const [leido, setLeido] = useState(false)
-
   const puntos = [
-    {
-      icono: '✍️',
-      titulo: 'Ingresa tus datos con cuidado',
-      texto: 'Tu nombre, oficio, comunas y descripción formarán parte de tu perfil público. Asegúrate de que estén bien escritos y representen bien tu trabajo — es lo primero que verán tus futuros clientes.'
-    },
-    {
-      icono: '🔒',
-      titulo: 'Tu privacidad está protegida',
-      texto: 'Solo serán visibles públicamente tu nombre, oficio, comunas donde prestas servicio, descripción y las reseñas de tus clientes. Tu teléfono y email son privados y nunca se mostrarán en tu perfil.'
-    },
-    {
-      icono: '📸',
-      titulo: 'Tu foto de perfil será obligatoria',
-      texto: 'Una vez registrado, deberás subir una foto de perfil desde tu panel. Esto es obligatorio para activar tu perfil público, ya que brinda seguridad y transparencia a los clientes que te contactarán a través de la plataforma.'
-    },
+    { icono: '✍️', titulo: 'Ingresa tus datos con cuidado', texto: 'Tu nombre, oficios, comunas y descripción formarán parte de tu perfil público. Asegúrate de que estén bien escritos y representen bien tu trabajo — es lo primero que verán tus futuros clientes.' },
+    { icono: '🔒', titulo: 'Tu privacidad está protegida', texto: 'Solo serán visibles públicamente tu nombre, oficios, comunas donde prestas servicio, descripción y las reseñas de tus clientes. Tu teléfono y email son privados y nunca se mostrarán en tu perfil.' },
+    { icono: '📸', titulo: 'Tu foto de perfil será obligatoria', texto: 'Una vez registrado, deberás subir una foto de perfil desde tu panel. Esto es obligatorio para activar tu perfil público, ya que brinda seguridad y transparencia a los clientes que te contactarán a través de la plataforma.' },
   ]
-
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '24px' }}>
       <div style={{ background: '#fff', borderRadius: '20px', padding: '36px', maxWidth: '520px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', position: 'relative' }}>
-
-        {/* BOTÓN CERRAR */}
-        <button
-          onClick={onCerrar}
-          style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '24px', color: '#9CA3AF', lineHeight: 1, padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          title="Cerrar">
-          ×
-        </button>
-
-        {/* Encabezado */}
+        <button onClick={onCerrar} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '24px', color: '#9CA3AF', lineHeight: 1, padding: '4px' }} title="Cerrar">×</button>
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
           <div style={{ fontSize: '40px', marginBottom: '12px' }}>👋</div>
           <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#111827', margin: '0 0 8px' }}>Antes de comenzar</h2>
           <p style={{ fontSize: '14px', color: '#6B7280', margin: 0, lineHeight: '1.5' }}>Hay algunas cosas importantes que debes saber antes de crear tu perfil en tumaestro.app.</p>
         </div>
-
-        {/* Puntos */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
           {puntos.map((p, idx) => (
             <div key={idx} style={{ display: 'flex', gap: '14px', padding: '16px', background: '#F8F9FA', borderRadius: '12px', border: '1px solid #F3F4F6' }}>
@@ -80,30 +56,14 @@ function ModalAviso({ onAceptar, onCerrar }) {
             </div>
           ))}
         </div>
-
-        {/* Checkbox */}
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', marginBottom: '20px' }}>
-          <input
-            type="checkbox"
-            checked={leido}
-            onChange={e => setLeido(e.target.checked)}
-            style={{ accentColor: '#1B3A6B', width: '16px', height: '16px', marginTop: '2px', flexShrink: 0 }}
-          />
-          <span style={{ fontSize: '13px', color: '#374151', lineHeight: '1.5' }}>
-            He leído y entiendo la información anterior. Ingresaré mis datos con cuidado y subiré mi foto de perfil una vez registrado.
-          </span>
+          <input type="checkbox" checked={leido} onChange={e => setLeido(e.target.checked)} style={{ accentColor: '#1B3A6B', width: '16px', height: '16px', marginTop: '2px', flexShrink: 0 }} />
+          <span style={{ fontSize: '13px', color: '#374151', lineHeight: '1.5' }}>He leído y entiendo la información anterior. Ingresaré mis datos con cuidado y subiré mi foto de perfil una vez registrado.</span>
         </label>
-
-        <button
-          onClick={onAceptar}
-          disabled={!leido}
-          style={{ width: '100%', padding: '14px', background: leido ? '#1B3A6B' : '#D1D5DB', color: leido ? '#fff' : '#9CA3AF', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: leido ? 'pointer' : 'not-allowed', transition: 'background 0.2s' }}>
+        <button onClick={onAceptar} disabled={!leido} style={{ width: '100%', padding: '14px', background: leido ? '#1B3A6B' : '#D1D5DB', color: leido ? '#fff' : '#9CA3AF', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: leido ? 'pointer' : 'not-allowed', transition: 'background 0.2s' }}>
           Entendido, continuar con el registro →
         </button>
-
-        <p style={{ fontSize: '12px', color: '#9CA3AF', textAlign: 'center', margin: '12px 0 0' }}>
-          Debes aceptar para continuar con el registro
-        </p>
+        <p style={{ fontSize: '12px', color: '#9CA3AF', textAlign: 'center', margin: '12px 0 0' }}>Debes aceptar para continuar con el registro</p>
       </div>
     </div>
   )
@@ -114,7 +74,7 @@ export default function Registro() {
   const [paso, setPaso] = useState(1)
   const [form, setForm] = useState({
     nombre: '', apellido: '', email: '', email_confirmar: '', telefono: '',
-    oficio: '', oficio_otro: '', comuna: '', experiencia: '', descripcion: '',
+    oficios: [], oficio_otro: '', comuna: '', experiencia: '', descripcion: '',
     password: '', confirmar: ''
   })
   const [enviado, setEnviado] = useState(false)
@@ -127,32 +87,39 @@ export default function Registro() {
 
   const todasSeleccionadas = form.comuna === TODAS_COMUNAS
 
+  // ── helpers oficios múltiples ──
+  function agregarOficio(oficio) {
+    if (!oficio || form.oficios.includes(oficio)) return
+    if (form.oficios.length >= MAX_OFICIOS) return
+    actualizar('oficios', [...form.oficios, oficio])
+    setErrores(prev => ({ ...prev, oficios: null }))
+  }
+
+  function quitarOficio(oficio) {
+    actualizar('oficios', form.oficios.filter(o => o !== oficio))
+    if (oficio === 'Otro') actualizar('oficio_otro', '')
+  }
+
+  const tieneOtro = form.oficios.includes('Otro')
+  const oficiosDisponibles = LISTA_OFICIOS.filter(o => !form.oficios.includes(o))
+
   function validarPaso1() {
     const e = {}
     if (!form.nombre.trim()) e.nombre = 'El nombre es requerido'
     if (!form.apellido.trim()) e.apellido = 'El apellido es requerido'
-    if (!form.email.trim()) {
-      e.email = 'El email es requerido'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      e.email = 'Email inválido'
-    }
-    if (!form.email_confirmar.trim()) {
-      e.email_confirmar = 'Confirma tu email'
-    } else if (form.email !== form.email_confirmar) {
-      e.email_confirmar = 'Los emails no coinciden'
-    }
-    if (!form.telefono.trim()) {
-      e.telefono = 'El teléfono es requerido'
-    } else if (!validarTelefonoChile(form.telefono)) {
-      e.telefono = 'Debe ser un número chileno válido: 9 XXXX XXXX'
-    }
+    if (!form.email.trim()) { e.email = 'El email es requerido' }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { e.email = 'Email inválido' }
+    if (!form.email_confirmar.trim()) { e.email_confirmar = 'Confirma tu email' }
+    else if (form.email !== form.email_confirmar) { e.email_confirmar = 'Los emails no coinciden' }
+    if (!form.telefono.trim()) { e.telefono = 'El teléfono es requerido' }
+    else if (!validarTelefonoChile(form.telefono)) { e.telefono = 'Debe ser un número chileno válido: 9 XXXX XXXX' }
     return e
   }
 
   function validarPaso2() {
     const e = {}
-    if (!form.oficio) e.oficio = 'Selecciona tu oficio'
-    if (form.oficio === 'Otro' && !form.oficio_otro.trim()) e.oficio_otro = 'Escribe tu oficio'
+    if (form.oficios.length === 0) e.oficios = 'Selecciona al menos un oficio'
+    if (tieneOtro && !form.oficio_otro.trim()) e.oficio_otro = 'Escribe el nombre de tu oficio'
     if (!form.comuna) e.comuna = 'Selecciona una zona de trabajo'
     if (!form.experiencia || parseInt(form.experiencia) < 0) e.experiencia = 'Ingresa tus años de experiencia'
     if (!form.descripcion.trim()) e.descripcion = 'La descripción es requerida'
@@ -160,14 +127,8 @@ export default function Registro() {
   }
 
   const siguiente = () => {
-    if (paso === 1) {
-      const e = validarPaso1()
-      if (Object.keys(e).length > 0) { setErrores(e); return }
-    }
-    if (paso === 2) {
-      const e = validarPaso2()
-      if (Object.keys(e).length > 0) { setErrores(e); return }
-    }
+    if (paso === 1) { const e = validarPaso1(); if (Object.keys(e).length > 0) { setErrores(e); return } }
+    if (paso === 2) { const e = validarPaso2(); if (Object.keys(e).length > 0) { setErrores(e); return } }
     if (paso < 3) setPaso(paso + 1)
   }
 
@@ -181,7 +142,8 @@ export default function Registro() {
     if (Object.keys(e).length > 0) { setErrores(e); return }
 
     try {
-      const oficioFinal = form.oficio === 'Otro' ? form.oficio_otro : form.oficio
+      // Resolver "Otro"
+      const oficiosFinales = form.oficios.map(o => o === 'Otro' ? form.oficio_otro.trim() : o)
       const telefonoFinal = `+56 ${form.telefono.trim()}`
       const res = await fetch(
         process.env.NEXT_PUBLIC_API_URL
@@ -189,7 +151,18 @@ export default function Registro() {
           : 'http://localhost:8000/api/registro/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, oficio: oficioFinal, telefono: telefonoFinal })
+        body: JSON.stringify({
+          nombre: form.nombre,
+          apellido: form.apellido,
+          email: form.email,
+          password: form.password,
+          telefono: telefonoFinal,
+          oficios: oficiosFinales,
+          oficio: oficiosFinales[0] || '',
+          comuna: form.comuna,
+          experiencia: form.experiencia,
+          descripcion: form.descripcion,
+        })
       })
       const data = await res.json()
       if (res.ok) setEnviado(true)
@@ -219,14 +192,7 @@ export default function Registro() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#F8F9FA' }}>
-
-      {/* MODAL AVISO */}
-      {mostrarAviso && (
-        <ModalAviso
-          onAceptar={() => setMostrarAviso(false)}
-          onCerrar={() => window.location.href = '/'}
-        />
-      )}
+      {mostrarAviso && <ModalAviso onAceptar={() => setMostrarAviso(false)} onCerrar={() => window.location.href = '/'} />}
 
       <nav style={{ background: '#1B3A6B', padding: '0 48px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span onClick={() => window.location.href = '/'} style={{ color: '#fff', fontSize: '20px', fontWeight: '600', cursor: 'pointer' }}>tumaestro<span style={{ color: '#F97316' }}>.app</span></span>
@@ -258,11 +224,10 @@ export default function Registro() {
 
         <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '32px' }}>
 
-          {/* PASO 1 — DATOS PERSONALES */}
+          {/* PASO 1 */}
           {paso === 1 && (
             <div>
               <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '24px' }}>Datos personales</h2>
-
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                 <div>
                   <label style={labelStyle}>Nombre *</label>
@@ -275,41 +240,26 @@ export default function Registro() {
                   <ErrorMsg msg={errores.apellido} />
                 </div>
               </div>
-
               <div style={{ marginBottom: '16px' }}>
                 <label style={labelStyle}>Email *</label>
                 <input value={form.email} onChange={e => actualizar('email', e.target.value)} placeholder="carlos@ejemplo.com" type="email" style={{ ...inputStyle, borderColor: errores.email ? '#EF4444' : '#E5E7EB' }} />
                 <ErrorMsg msg={errores.email} />
               </div>
-
               <div style={{ marginBottom: '16px' }}>
                 <label style={labelStyle}>Confirmar email *</label>
-                <input
-                  value={form.email_confirmar}
-                  onChange={e => actualizar('email_confirmar', e.target.value)}
-                  placeholder="Repite tu email"
-                  type="email"
-                  style={{ ...inputStyle, borderColor: errores.email_confirmar ? '#EF4444' : (form.email_confirmar && form.email === form.email_confirmar) ? '#059669' : '#E5E7EB' }}
-                />
+                <input value={form.email_confirmar} onChange={e => actualizar('email_confirmar', e.target.value)} placeholder="Repite tu email" type="email"
+                  style={{ ...inputStyle, borderColor: errores.email_confirmar ? '#EF4444' : (form.email_confirmar && form.email === form.email_confirmar) ? '#059669' : '#E5E7EB' }} />
                 <ErrorMsg msg={errores.email_confirmar} />
                 {!errores.email_confirmar && form.email_confirmar && form.email === form.email_confirmar && (
                   <p style={{ fontSize: '12px', color: '#059669', margin: '4px 0 0' }}>✓ Los emails coinciden</p>
                 )}
               </div>
-
               <div>
                 <label style={labelStyle}>Teléfono *</label>
                 <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${errores.telefono ? '#EF4444' : '#E5E7EB'}`, borderRadius: '8px', overflow: 'hidden' }}>
-                  <div style={{ padding: '10px 12px', background: '#F3F4F6', borderRight: '1px solid #E5E7EB', fontSize: '14px', color: '#374151', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                    +56
-                  </div>
-                  <input
-                    value={form.telefono}
-                    onChange={e => actualizar('telefono', e.target.value.replace(/[^\d\s]/g, ''))}
-                    placeholder="9 1234 5678"
-                    maxLength={11}
-                    style={{ flex: 1, border: 'none', outline: 'none', padding: '10px 14px', fontSize: '14px', background: 'transparent' }}
-                  />
+                  <div style={{ padding: '10px 12px', background: '#F3F4F6', borderRight: '1px solid #E5E7EB', fontSize: '14px', color: '#374151', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>+56</div>
+                  <input value={form.telefono} onChange={e => actualizar('telefono', e.target.value.replace(/[^\d\s]/g, ''))} placeholder="9 1234 5678" maxLength={11}
+                    style={{ flex: 1, border: 'none', outline: 'none', padding: '10px 14px', fontSize: '14px', background: 'transparent' }} />
                 </div>
                 <ErrorMsg msg={errores.telefono} />
                 {!errores.telefono && form.telefono && validarTelefonoChile(form.telefono) && (
@@ -320,43 +270,69 @@ export default function Registro() {
             </div>
           )}
 
-          {/* PASO 2 — OFICIO */}
+          {/* PASO 2 */}
           {paso === 2 && (
             <div>
               <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '24px' }}>Tu oficio</h2>
 
+              {/* SELECTOR MÚLTIPLE DE OFICIOS */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={labelStyle}>Oficio principal *</label>
-                <select value={form.oficio} onChange={e => actualizar('oficio', e.target.value)} style={{ ...inputStyle, background: '#fff', borderColor: errores.oficio ? '#EF4444' : '#E5E7EB' }}>
-                  <option value="">Selecciona tu oficio</option>
-                  {oficios.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
-                <ErrorMsg msg={errores.oficio} />
+                <label style={labelStyle}>
+                  Oficios * <span style={{ color: '#9CA3AF', fontWeight: 400 }}>(máximo {MAX_OFICIOS})</span>
+                </label>
+
+                {/* Chips seleccionados */}
+                {form.oficios.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                    {form.oficios.map(o => (
+                      <span key={o} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#EEF2FF', color: '#1B3A6B', fontSize: '13px', padding: '5px 12px', borderRadius: '999px', fontWeight: 500 }}>
+                        {o === 'Otro' && form.oficio_otro ? form.oficio_otro : o}
+                        <span onClick={() => quitarOficio(o)} style={{ cursor: 'pointer', color: '#6B7280', fontWeight: 700, lineHeight: 1, fontSize: '14px' }}>×</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Selector para agregar */}
+                {form.oficios.length < MAX_OFICIOS && (
+                  <select
+                    value=""
+                    onChange={e => agregarOficio(e.target.value)}
+                    style={{ ...inputStyle, background: '#fff', borderColor: errores.oficios ? '#EF4444' : '#E5E7EB' }}>
+                    <option value="">
+                      {form.oficios.length === 0 ? 'Selecciona tu oficio principal...' : '+ Agregar otro oficio...'}
+                    </option>
+                    {oficiosDisponibles.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                )}
+
+                <ErrorMsg msg={errores.oficios} />
+                {form.oficios.length > 0 && form.oficios.length < MAX_OFICIOS && (
+                  <p style={{ fontSize: '12px', color: '#6B7280', margin: '6px 0 0' }}>
+                    Puedes agregar hasta {MAX_OFICIOS - form.oficios.length} oficio{MAX_OFICIOS - form.oficios.length !== 1 ? 's' : ''} más.
+                  </p>
+                )}
+                {form.oficios.length === MAX_OFICIOS && (
+                  <p style={{ fontSize: '12px', color: '#059669', margin: '6px 0 0' }}>✓ Máximo de oficios alcanzado.</p>
+                )}
               </div>
 
-              {form.oficio === 'Otro' && (
+              {/* Input para "Otro" */}
+              {tieneOtro && (
                 <div style={{ marginBottom: '16px' }}>
-                  <label style={labelStyle}>¿Cuál es tu oficio? *</label>
-                  <input
-                    value={form.oficio_otro}
-                    onChange={e => actualizar('oficio_otro', e.target.value)}
-                    placeholder="Ej: Instalador de alarmas, Soldador..."
-                    style={{ ...inputStyle, borderColor: errores.oficio_otro ? '#EF4444' : '#E5E7EB' }}
-                    autoFocus
-                  />
+                  <label style={labelStyle}>¿Cuál es ese oficio? *</label>
+                  <input value={form.oficio_otro} onChange={e => actualizar('oficio_otro', e.target.value)}
+                    placeholder="Ej: Instalador de alarmas, Soldador..." autoFocus
+                    style={{ ...inputStyle, borderColor: errores.oficio_otro ? '#EF4444' : '#E5E7EB' }} />
                   <ErrorMsg msg={errores.oficio_otro} />
                 </div>
               )}
 
+              {/* ZONA DE TRABAJO */}
               <div style={{ marginBottom: '16px' }}>
                 <label style={labelStyle}>¿Dónde trabajas? *</label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', border: `1px solid ${todasSeleccionadas ? '#1B3A6B' : '#E5E7EB'}`, background: todasSeleccionadas ? '#EEF2FF' : '#fff', marginBottom: '8px', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={todasSeleccionadas}
-                    onChange={e => actualizar('comuna', e.target.checked ? TODAS_COMUNAS : '')}
-                    style={{ accentColor: '#1B3A6B', width: '16px', height: '16px' }}
-                  />
+                  <input type="checkbox" checked={todasSeleccionadas} onChange={e => actualizar('comuna', e.target.checked ? TODAS_COMUNAS : '')} style={{ accentColor: '#1B3A6B', width: '16px', height: '16px' }} />
                   <span style={{ fontSize: '14px', fontWeight: 600, color: '#1B3A6B' }}>🗺 Todas las comunas de Santiago</span>
                 </label>
                 {!todasSeleccionadas && (
@@ -371,58 +347,52 @@ export default function Registro() {
 
               <div style={{ marginBottom: '16px' }}>
                 <label style={labelStyle}>Años de experiencia *</label>
-                <input value={form.experiencia} onChange={e => actualizar('experiencia', e.target.value)} placeholder="Ej: 8" type="number" min="0" max="60" style={{ ...inputStyle, borderColor: errores.experiencia ? '#EF4444' : '#E5E7EB' }} />
+                <input value={form.experiencia} onChange={e => actualizar('experiencia', e.target.value)} placeholder="Ej: 8" type="number" min="0" max="60"
+                  style={{ ...inputStyle, borderColor: errores.experiencia ? '#EF4444' : '#E5E7EB' }} />
                 <ErrorMsg msg={errores.experiencia} />
               </div>
 
               <div>
                 <label style={labelStyle}>Descripción breve *</label>
-                <textarea
-                  value={form.descripcion}
-                  onChange={e => actualizar('descripcion', e.target.value)}
-                  placeholder="Describe tu experiencia, especialidades y tipo de trabajos que realizas..."
-                  rows={4}
-                  style={{ ...inputStyle, resize: 'none', fontFamily: 'inherit', borderColor: errores.descripcion ? '#EF4444' : '#E5E7EB' }}
-                />
+                <textarea value={form.descripcion} onChange={e => actualizar('descripcion', e.target.value)}
+                  placeholder="Describe tu experiencia, especialidades y tipo de trabajos que realizas..." rows={4}
+                  style={{ ...inputStyle, resize: 'none', fontFamily: 'inherit', borderColor: errores.descripcion ? '#EF4444' : '#E5E7EB' }} />
                 <ErrorMsg msg={errores.descripcion} />
               </div>
             </div>
           )}
 
-          {/* PASO 3 — CONTRASEÑA */}
+          {/* PASO 3 */}
           {paso === 3 && (
             <div>
               <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '8px' }}>Crea tu contraseña</h2>
               <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '24px' }}>Último paso — ya casi terminas</p>
-
               <div style={{ marginBottom: '16px' }}>
                 <label style={labelStyle}>Contraseña *</label>
-                <input value={form.password} onChange={e => actualizar('password', e.target.value)} type="password" placeholder="Mínimo 8 caracteres" style={{ ...inputStyle, borderColor: errores.password ? '#EF4444' : '#E5E7EB' }} />
+                <input value={form.password} onChange={e => actualizar('password', e.target.value)} type="password" placeholder="Mínimo 8 caracteres"
+                  style={{ ...inputStyle, borderColor: errores.password ? '#EF4444' : '#E5E7EB' }} />
                 <ErrorMsg msg={errores.password} />
               </div>
-
               <div style={{ marginBottom: '24px' }}>
                 <label style={labelStyle}>Confirmar contraseña *</label>
-                <input
-                  value={form.confirmar}
-                  onChange={e => actualizar('confirmar', e.target.value)}
-                  type="password"
-                  placeholder="Repite tu contraseña"
-                  style={{ ...inputStyle, borderColor: errores.confirmar ? '#EF4444' : (form.confirmar && form.password === form.confirmar) ? '#059669' : '#E5E7EB' }}
-                />
+                <input value={form.confirmar} onChange={e => actualizar('confirmar', e.target.value)} type="password" placeholder="Repite tu contraseña"
+                  style={{ ...inputStyle, borderColor: errores.confirmar ? '#EF4444' : (form.confirmar && form.password === form.confirmar) ? '#059669' : '#E5E7EB' }} />
                 <ErrorMsg msg={errores.confirmar} />
                 {!errores.confirmar && form.confirmar && form.password === form.confirmar && (
                   <p style={{ fontSize: '12px', color: '#059669', margin: '4px 0 0' }}>✓ Las contraseñas coinciden</p>
                 )}
               </div>
-
               <div style={{ background: '#F8F9FA', borderRadius: '10px', padding: '16px' }}>
                 <p style={{ fontSize: '13px', color: '#374151', fontWeight: '500', marginBottom: '8px' }}>Resumen de tu registro:</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <span style={{ fontSize: '13px', color: '#6B7280' }}>Nombre: <strong style={{ color: '#111827' }}>{form.nombre} {form.apellido}</strong></span>
                   <span style={{ fontSize: '13px', color: '#6B7280' }}>Email: <strong style={{ color: '#111827' }}>{form.email}</strong></span>
                   <span style={{ fontSize: '13px', color: '#6B7280' }}>Teléfono: <strong style={{ color: '#111827' }}>+56 {form.telefono}</strong></span>
-                  <span style={{ fontSize: '13px', color: '#6B7280' }}>Oficio: <strong style={{ color: '#111827' }}>{form.oficio === 'Otro' ? form.oficio_otro : form.oficio}</strong></span>
+                  <span style={{ fontSize: '13px', color: '#6B7280' }}>
+                    Oficios: <strong style={{ color: '#111827' }}>
+                      {form.oficios.map(o => o === 'Otro' ? form.oficio_otro : o).join(', ')}
+                    </strong>
+                  </span>
                   <span style={{ fontSize: '13px', color: '#6B7280' }}>Zona: <strong style={{ color: '#111827' }}>{form.comuna === TODAS_COMUNAS ? '🗺 Toda Santiago' : form.comuna}</strong></span>
                   <span style={{ fontSize: '13px', color: '#6B7280' }}>Experiencia: <strong style={{ color: '#111827' }}>{form.experiencia} años</strong></span>
                 </div>

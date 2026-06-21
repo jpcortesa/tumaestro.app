@@ -25,7 +25,7 @@ const comunas = [
   'Santiago Centro', 'Vitacura', 'Puente Alto', 'San Bernardo'
 ]
 
-const oficios = ['Gasfitero', 'Electricista', 'Pintor', 'Cerrajero', 'Jardinero', 'Carpintero', 'Albanil', 'Tecnico en climatizacion', 'Técnico en refrigeración', 'Instalador de pisos', 'Techador', 'Plomero', 'Otro']
+const LISTA_OFICIOS = ['Gasfitero', 'Electricista', 'Pintor', 'Cerrajero', 'Jardinero', 'Carpintero', 'Albanil', 'Tecnico en climatizacion', 'Técnico en refrigeración', 'Instalador de pisos', 'Techador', 'Plomero', 'Otro']
 
 const itemVacio = () => ({ descripcion: '', cantidad: 1, precio_unitario: '' })
 
@@ -36,6 +36,7 @@ const TIPOS_IMPUESTO = [
 ]
 
 const TODAS_COMUNAS = 'Todas las comunas de Santiago'
+const MAX_OFICIOS = 3
 
 export default function Panel() {
   const [autorizado, setAutorizado] = useState(false)
@@ -64,7 +65,10 @@ export default function Panel() {
   const [resenas, setResenas] = useState({ promedio: null, total: 0, resenas: [] })
 
   const [config, setConfig] = useState(null)
-  const [formConfig, setFormConfig] = useState({ oficio: '', descripcion: '', comuna: '', comunas: [], experiencia: '', telefono: '', activo: true })
+  const [formConfig, setFormConfig] = useState({
+    oficio: '', oficios: [], descripcion: '', comuna: '', comunas: [],
+    experiencia: '', telefono: '', activo: true
+  })
   const [formPassword, setFormPassword] = useState({ password_actual: '', password_nuevo: '', password_confirmar: '' })
   const [guardandoConfig, setGuardandoConfig] = useState(false)
   const [guardandoPassword, setGuardandoPassword] = useState(false)
@@ -87,7 +91,6 @@ export default function Panel() {
         if (data) {
           setUsuario(data)
           setAutorizado(true)
-          // Carga inicial del dashboard: trabajos + cotizaciones + solicitudes en paralelo
           Promise.all([
             fetch(`${API}/api/trabajos/`, { headers: { 'Authorization': `Bearer ${tk}` } }).then(r => r.json()),
             fetch(`${API}/api/cotizaciones/`, { headers: { 'Authorization': `Bearer ${tk}` } }).then(r => r.json()),
@@ -221,7 +224,16 @@ export default function Panel() {
     const res = await fetch(`${API}/api/configuracion/`, { headers: { 'Authorization': `Bearer ${token()}` } })
     const data = await res.json()
     setConfig(data)
-    setFormConfig({ oficio: data.oficio || '', descripcion: data.descripcion || '', comuna: data.comuna || '', comunas: data.comunas || [], experiencia: data.experiencia || '', telefono: data.telefono || '', activo: data.activo })
+    setFormConfig({
+      oficio: data.oficio || '',
+      oficios: data.oficios || [],
+      descripcion: data.descripcion || '',
+      comuna: data.comuna || '',
+      comunas: data.comunas || [],
+      experiencia: data.experiencia || '',
+      telefono: data.telefono || '',
+      activo: data.activo,
+    })
   }
 
   async function guardarConfig() {
@@ -268,6 +280,18 @@ export default function Panel() {
   }
   function quitarComuna(comuna) { setFormConfig({ ...formConfig, comunas: (formConfig.comunas || []).filter(c => c !== comuna) }) }
 
+  // ── helpers oficios múltiples en configuración ──
+  function agregarOficioConfig(oficio) {
+    if (!oficio || (formConfig.oficios || []).includes(oficio)) return
+    if ((formConfig.oficios || []).length >= MAX_OFICIOS) return
+    const nuevos = [...(formConfig.oficios || []), oficio]
+    setFormConfig({ ...formConfig, oficios: nuevos, oficio: nuevos[0] || '' })
+  }
+  function quitarOficioConfig(oficio) {
+    const nuevos = (formConfig.oficios || []).filter(o => o !== oficio)
+    setFormConfig({ ...formConfig, oficios: nuevos, oficio: nuevos[0] || '' })
+  }
+
   const cerrarSesion = () => { localStorage.removeItem('token'); localStorage.removeItem('refresh'); window.location.href = '/' }
 
   const subtotalItems = items.reduce((acc, i) => acc + (parseInt(i.cantidad) || 0) * (parseInt(i.precio_unitario) || 0), 0)
@@ -280,10 +304,8 @@ export default function Panel() {
 
   const clienteSeleccionado = clientesReal.find(c => String(c.id) === String(formCotizacion.cliente))
 
-  // ── MÉTRICAS DASHBOARD (datos reales) ──────────────────────────────
   const mesActual = new Date().getMonth()
   const añoActual = new Date().getFullYear()
-
   const trabajosActivos = trabajosReal.filter(t => t.estado === 'pendiente' || t.estado === 'en_progreso').length
   const cotizacionesPendientes = cotizacionesReal.filter(c => c.estado === 'borrador' || c.estado === 'enviada').length
   const ingresosMes = trabajosReal
@@ -297,7 +319,6 @@ export default function Panel() {
   const trabajosRecientes = [...trabajosReal].slice(0, 5)
   const proximosTrabajos = trabajosReal.filter(t => t.estado === 'pendiente' || t.estado === 'en_progreso').slice(0, 4)
 
-  // Fecha actual dinámica
   const fechaHoy = new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const fechaCapitalizada = fechaHoy.charAt(0).toUpperCase() + fechaHoy.slice(1)
 
@@ -411,18 +432,11 @@ export default function Panel() {
             <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '480px', display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'center' }}>
               <div style={{ fontSize: '48px' }}>📤</div>
               <h2 style={{ fontWeight: 700, color: '#1B3A6B', margin: 0 }}>¡Cotización enviada!</h2>
-              <p style={{ color: '#374151', fontSize: '15px', lineHeight: '1.6', margin: 0 }}>
-                La cotización fue enviada al cliente y lo notificamos por email para que la apruebe o rechace.
-              </p>
+              <p style={{ color: '#374151', fontSize: '15px', lineHeight: '1.6', margin: 0 }}>La cotización fue enviada al cliente y lo notificamos por email para que la apruebe o rechace.</p>
               <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '10px', padding: '14px 16px' }}>
-                <p style={{ fontSize: '13px', color: '#166534', margin: 0 }}>
-                  💡 Si lo deseas, también puedes contactar directamente al cliente para avisarle que tiene una cotización pendiente.
-                </p>
+                <p style={{ fontSize: '13px', color: '#166534', margin: 0 }}>💡 Si lo deseas, también puedes contactar directamente al cliente para avisarle que tiene una cotización pendiente.</p>
               </div>
-              <button onClick={() => setShowModalCotizacionEnviada(false)}
-                style={{ padding: '12px', background: '#1B3A6B', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '15px' }}>
-                Entendido
-              </button>
+              <button onClick={() => setShowModalCotizacionEnviada(false)} style={{ padding: '12px', background: '#1B3A6B', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '15px' }}>Entendido</button>
             </div>
           </div>
         )}
@@ -484,15 +498,13 @@ export default function Panel() {
           </div>
         )}
 
-        {/* ── SECCIÓN DASHBOARD ── */}
+        {/* ── DASHBOARD ── */}
         {seccion === 'dashboard' && (
           <div style={{ padding: '32px' }}>
-
             {dashboardCargando ? (
               <div style={{ textAlign: 'center', padding: '4rem', color: '#6B7280' }}>Cargando datos...</div>
             ) : (
               <>
-                {/* MÉTRICAS */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '32px' }}>
                   {[
                     { label: 'Trabajos activos', valor: String(trabajosActivos), icono: '⚒', color: '#EEF2FF', texto: '#1B3A6B' },
@@ -509,8 +521,6 @@ export default function Panel() {
                     </div>
                   ))}
                 </div>
-
-                {/* TRABAJOS RECIENTES */}
                 <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
                     <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>Trabajos recientes</h2>
@@ -535,9 +545,7 @@ export default function Panel() {
                               <td style={{ padding: '12px', fontSize: '14px', fontWeight: '500', color: '#111827' }}>{t.cliente}</td>
                               <td style={{ padding: '12px', fontSize: '14px', color: '#374151' }}>{t.descripcion}</td>
                               <td style={{ padding: '12px', fontSize: '14px', color: '#6B7280' }}>{t.comuna || '—'}</td>
-                              <td style={{ padding: '12px', fontSize: '14px', color: '#6B7280' }}>
-                                {t.fecha ? new Date(t.fecha).toLocaleDateString('es-CL') : '—'}
-                              </td>
+                              <td style={{ padding: '12px', fontSize: '14px', color: '#6B7280' }}>{t.fecha ? new Date(t.fecha).toLocaleDateString('es-CL') : '—'}</td>
                               <td style={{ padding: '12px' }}>
                                 <span style={{ background: est.bg, color: est.color, fontSize: '12px', padding: '4px 10px', borderRadius: '999px', fontWeight: '500' }}>{est.label}</span>
                               </td>
@@ -549,8 +557,6 @@ export default function Panel() {
                     </table>
                   )}
                 </div>
-
-                {/* PRÓXIMOS TRABAJOS + SOLICITUDES */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                   <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px' }}>
                     <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Próximos trabajos</h2>
@@ -571,7 +577,6 @@ export default function Panel() {
                       </div>
                     )}
                   </div>
-
                   <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                       <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>Solicitudes recientes</h2>
@@ -591,9 +596,7 @@ export default function Panel() {
                       </div>
                     ))}
                     {solicitudes.filter(s => !s.descartada).length > 0 && (
-                      <button onClick={() => { setSeccion('solicitudes'); fetchSolicitudes() }} style={{ background: 'none', border: 'none', color: '#1B3A6B', fontSize: '13px', cursor: 'pointer', padding: 0, marginTop: '8px' }}>
-                        Ver todas →
-                      </button>
+                      <button onClick={() => { setSeccion('solicitudes'); fetchSolicitudes() }} style={{ background: 'none', border: 'none', color: '#1B3A6B', fontSize: '13px', cursor: 'pointer', padding: 0, marginTop: '8px' }}>Ver todas →</button>
                     )}
                   </div>
                 </div>
@@ -602,7 +605,7 @@ export default function Panel() {
           </div>
         )}
 
-        {/* SECCIÓN SOLICITUDES */}
+        {/* SOLICITUDES */}
         {seccion === 'solicitudes' && (
           <div style={{ padding: '32px' }}>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
@@ -640,14 +643,8 @@ export default function Panel() {
                     </div>
                     {!s.descartada && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
-                        <button onClick={() => crearClienteDesdeSolicitud(s)}
-                          style={{ background: '#1B3A6B', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#fff', fontWeight: 600 }}>
-                          + Crear cliente
-                        </button>
-                        <button onClick={() => descartarSolicitud(s.id)}
-                          style={{ background: 'none', border: '1px solid #FCA5A5', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#EF4444' }}>
-                          Descartar
-                        </button>
+                        <button onClick={() => crearClienteDesdeSolicitud(s)} style={{ background: '#1B3A6B', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#fff', fontWeight: 600 }}>+ Crear cliente</button>
+                        <button onClick={() => descartarSolicitud(s.id)} style={{ background: 'none', border: '1px solid #FCA5A5', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#EF4444' }}>Descartar</button>
                       </div>
                     )}
                   </div>
@@ -657,7 +654,7 @@ export default function Panel() {
           </div>
         )}
 
-        {/* SECCIÓN TRABAJOS */}
+        {/* TRABAJOS */}
         {seccion === 'trabajos' && (
           <div style={{ padding: '32px' }}>
             <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '10px', padding: '14px 20px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -703,7 +700,7 @@ export default function Panel() {
           </div>
         )}
 
-        {/* SECCIÓN CLIENTES */}
+        {/* CLIENTES */}
         {seccion === 'clientes' && (
           <div style={{ padding: '32px' }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
@@ -742,7 +739,7 @@ export default function Panel() {
           </div>
         )}
 
-        {/* SECCIÓN COTIZACIONES */}
+        {/* COTIZACIONES */}
         {seccion === 'cotizaciones' && (
           <div style={{ padding: '32px' }}>
             <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '10px', padding: '14px 20px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -778,14 +775,10 @@ export default function Panel() {
                         <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: '14px' }}>{clientesReal.find(cl => cl.id === c.cliente)?.nombre || c.cliente}</td>
                         <td style={{ padding: '12px 16px', color: '#6B7280', fontSize: '14px' }}>{c.descripcion}</td>
                         <td style={{ padding: '12px 16px', fontSize: '14px' }}>${subtotal.toLocaleString('es-CL')}</td>
-                        <td style={{ padding: '12px 16px', fontSize: '14px', color: impuesto > 0 ? '#92400E' : '#9CA3AF' }}>
-                          {impuesto > 0 ? `$${impuesto.toLocaleString('es-CL')}` : '—'}
-                        </td>
+                        <td style={{ padding: '12px 16px', fontSize: '14px', color: impuesto > 0 ? '#92400E' : '#9CA3AF' }}>{impuesto > 0 ? `$${impuesto.toLocaleString('es-CL')}` : '—'}</td>
                         <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: '14px' }}>${c.monto?.toLocaleString('es-CL')}</td>
                         <td style={{ padding: '12px 16px' }}>
-                          <span style={{ background: estadoColorCotizacion[c.estado]?.bg || '#F3F4F6', color: estadoColorCotizacion[c.estado]?.color || '#374151', padding: '4px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 500 }}>
-                            {c.estado}
-                          </span>
+                          <span style={{ background: estadoColorCotizacion[c.estado]?.bg || '#F3F4F6', color: estadoColorCotizacion[c.estado]?.color || '#374151', padding: '4px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 500 }}>{c.estado}</span>
                         </td>
                         <td style={{ padding: '12px 16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                           {c.estado === 'borrador' && <>
@@ -843,9 +836,7 @@ export default function Panel() {
                         </div>
                       ))}
                     </div>
-                    <button onClick={agregarItem} style={{ marginTop: '8px', background: 'none', border: '1px dashed #E5E7EB', borderRadius: '8px', padding: '8px', width: '100%', cursor: 'pointer', color: '#6B7280', fontSize: '13px' }}>
-                      + Agregar item
-                    </button>
+                    <button onClick={agregarItem} style={{ marginTop: '8px', background: 'none', border: '1px dashed #E5E7EB', borderRadius: '8px', padding: '8px', width: '100%', cursor: 'pointer', color: '#6B7280', fontSize: '13px' }}>+ Agregar item</button>
                   </div>
                   <div style={{ background: '#F8F9FA', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
@@ -885,7 +876,7 @@ export default function Panel() {
           </div>
         )}
 
-        {/* SECCIÓN RESEÑAS */}
+        {/* RESEÑAS */}
         {seccion === 'resenas' && (
           <div style={{ padding: '32px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px' }}>
@@ -933,7 +924,7 @@ export default function Panel() {
           </div>
         )}
 
-        {/* SECCIÓN CONFIGURACIÓN */}
+        {/* CONFIGURACIÓN */}
         {seccion === 'configuracion' && (
           <div style={{ padding: '32px', maxWidth: '720px' }}>
             <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '28px', marginBottom: '24px' }}>
@@ -941,19 +932,42 @@ export default function Panel() {
               <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '20px' }}>Esta información es visible para los clientes en el directorio.</p>
               {config === null ? <p style={{ color: '#6B7280', fontSize: '14px' }}>Cargando...</p> : (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                    <div>
-                      <label style={labelStyle}>Oficio</label>
-                      <select value={formConfig.oficio} onChange={e => setFormConfig({ ...formConfig, oficio: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
-                        <option value="">Selecciona un oficio</option>
-                        {oficios.map(o => <option key={o} value={o}>{o}</option>)}
+                  {/* SELECTOR MÚLTIPLE DE OFICIOS */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ ...labelStyle, display: 'block', marginBottom: '8px' }}>
+                      Oficios <span style={{ color: '#9CA3AF', fontWeight: 400 }}>(máximo {MAX_OFICIOS})</span>
+                    </label>
+                    {(formConfig.oficios || []).length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                        {(formConfig.oficios || []).map(o => (
+                          <span key={o} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#EEF2FF', color: '#1B3A6B', fontSize: '13px', padding: '4px 12px', borderRadius: '999px', fontWeight: 500 }}>
+                            {o}
+                            <span onClick={() => quitarOficioConfig(o)} style={{ cursor: 'pointer', color: '#6B7280', fontWeight: 700, lineHeight: 1 }}>×</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {(formConfig.oficios || []).length < MAX_OFICIOS && (
+                      <select value="" onChange={e => agregarOficioConfig(e.target.value)} style={{ ...inputStyle, background: '#fff', marginTop: 0 }}>
+                        <option value="">{(formConfig.oficios || []).length === 0 ? 'Selecciona tu oficio principal...' : '+ Agregar otro oficio...'}</option>
+                        {LISTA_OFICIOS.filter(o => !(formConfig.oficios || []).includes(o)).map(o => <option key={o} value={o}>{o}</option>)}
                       </select>
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Años de experiencia</label>
-                      <input type="number" min="0" max="50" value={formConfig.experiencia} onChange={e => setFormConfig({ ...formConfig, experiencia: e.target.value })} style={inputStyle} />
-                    </div>
+                    )}
+                    {(formConfig.oficios || []).length === 0 && (
+                      <p style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '6px' }}>Selecciona al menos un oficio</p>
+                    )}
+                    {(formConfig.oficios || []).length === MAX_OFICIOS && (
+                      <p style={{ fontSize: '12px', color: '#059669', marginTop: '6px' }}>✓ Máximo de oficios alcanzado</p>
+                    )}
                   </div>
+
+                  {/* AÑOS DE EXPERIENCIA */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={labelStyle}>Años de experiencia</label>
+                    <input type="number" min="0" max="50" value={formConfig.experiencia} onChange={e => setFormConfig({ ...formConfig, experiencia: e.target.value })} style={inputStyle} />
+                  </div>
+
+                  {/* COMUNAS */}
                   <div style={{ marginBottom: '16px' }}>
                     <label style={labelStyle}>Comunas donde prestas servicio</label>
                     <div style={{ marginTop: '8px' }}>
@@ -981,10 +995,12 @@ export default function Panel() {
                       )}
                     </div>
                   </div>
+
                   <div style={{ marginBottom: '20px' }}>
                     <label style={labelStyle}>Descripción / Sobre mí</label>
                     <textarea value={formConfig.descripcion} onChange={e => setFormConfig({ ...formConfig, descripcion: e.target.value })} rows={4} placeholder="Cuéntales a tus clientes quién eres y qué haces..." style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} />
                   </div>
+
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: '#F8F9FA', borderRadius: '10px', marginBottom: '20px' }}>
                     <div>
                       <p style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>Perfil público visible</p>
@@ -995,6 +1011,7 @@ export default function Panel() {
                       <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#fff', position: 'absolute', top: '3px', left: formConfig.activo ? '23px' : '3px', transition: 'left 0.2s' }} />
                     </div>
                   </div>
+
                   {msgConfig && (
                     <div style={{ padding: '10px 14px', borderRadius: '8px', marginBottom: '16px', background: msgConfig.tipo === 'ok' ? '#ECFDF5' : '#FEE2E2', color: msgConfig.tipo === 'ok' ? '#065F46' : '#991B1B', fontSize: '14px' }}>
                       {msgConfig.tipo === 'ok' ? '✓ ' : '✗ '}{msgConfig.texto}

@@ -248,7 +248,12 @@ class RegistroView(APIView):
         password = data.get('password', '')
         nombre = data.get('nombre', '')
         apellido = data.get('apellido', '')
-        oficio = data.get('oficio', '')
+        oficios_lista = data.get('oficios', [])
+        # compatibilidad: si mandan oficio (string) y no oficios (lista)
+        oficio_legacy = data.get('oficio', '')
+        if not oficios_lista and oficio_legacy:
+            oficios_lista = [oficio_legacy]
+        oficio_principal = oficios_lista[0] if oficios_lista else ''
         comuna = data.get('comuna', '')
         telefono = data.get('telefono', '')
         experiencia = data.get('experiencia', 0)
@@ -268,7 +273,8 @@ class RegistroView(APIView):
         Contratista.objects.create(
             usuario=user,
             nombre=f'{nombre} {apellido}',
-            oficio=oficio,
+            oficio=oficio_principal,
+            oficios=oficios_lista,
             telefono=telefono,
             comuna=comuna,
             experiencia=experiencia,
@@ -277,6 +283,7 @@ class RegistroView(APIView):
         )
 
         return Response({'mensaje': 'Registro exitoso', 'email': email}, status=status.HTTP_201_CREATED)
+
 
 class PerfilView(APIView):
     permission_classes = [IsAuthenticated]
@@ -299,6 +306,7 @@ class PerfilView(APIView):
             'oficio': oficio,
         })
 
+
 class TrabajosView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -313,6 +321,7 @@ class TrabajosView(APIView):
             serializer.save(usuario=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class TrabajoDetalleView(APIView):
     permission_classes = [IsAuthenticated]
@@ -332,6 +341,7 @@ class TrabajoDetalleView(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class ClientesView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -347,6 +357,7 @@ class ClientesView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class ClienteDetalleView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -360,6 +371,7 @@ class ClienteDetalleView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class CotizacionesView(APIView):
     permission_classes = [IsAuthenticated]
@@ -397,6 +409,7 @@ class CotizacionesView(APIView):
             return Response(CotizacionSerializer(cotizacion).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class CotizacionDetalleView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -433,7 +446,9 @@ def contratistas_publicos(request):
             'id': c.id,
             'nombre': c.nombre,
             'oficio': c.oficio,
+            'oficios': c.oficios if hasattr(c, 'oficios') and c.oficios else [],
             'comuna': c.comuna,
+            'comunas': c.comunas if hasattr(c, 'comunas') and c.comunas else [],
             'experiencia': c.experiencia,
             'descripcion': c.descripcion,
             'verificado': c.verificado,
@@ -441,6 +456,7 @@ def contratistas_publicos(request):
             'total_resenas': total,
         })
     return Response(data)
+
 
 @api_view(['GET'])
 def contratista_publico(request, pk):
@@ -453,12 +469,15 @@ def contratista_publico(request, pk):
         'id': c.id,
         'nombre': c.nombre,
         'oficio': c.oficio,
+        'oficios': c.oficios if hasattr(c, 'oficios') and c.oficios else [],
         'comuna': c.comuna,
+        'comunas': c.comunas if hasattr(c, 'comunas') and c.comunas else [],
         'experiencia': c.experiencia,
         'descripcion': c.descripcion,
         'verificado': c.verificado,
         'telefono': c.telefono,
     })
+
 
 @api_view(['POST'])
 def solicitud_cotizacion(request, pk):
@@ -488,6 +507,7 @@ def solicitud_cotizacion(request, pk):
 
     return Response({'mensaje': 'Solicitud enviada exitosamente'}, status=status.HTTP_201_CREATED)
 
+
 @api_view(['GET'])
 def mis_solicitudes(request):
     if not request.user.is_authenticated:
@@ -513,6 +533,7 @@ def mis_solicitudes(request):
     } for s in solicitudes]
     return Response(data)
 
+
 @api_view(['PATCH'])
 def marcar_solicitud_leida(request, pk):
     if not request.user.is_authenticated:
@@ -526,6 +547,7 @@ def marcar_solicitud_leida(request, pk):
     solicitud.leida = True
     solicitud.save()
     return Response({'mensaje': 'Marcada como leída'})
+
 
 @api_view(['PATCH'])
 def descartar_solicitud(request, pk):
@@ -541,6 +563,7 @@ def descartar_solicitud(request, pk):
     solicitud.leida = True
     solicitud.save()
     return Response({'mensaje': 'Solicitud descartada'})
+
 
 @api_view(['GET'])
 def cotizacion_publica(request, token):
@@ -579,6 +602,7 @@ def cotizacion_publica(request, token):
             } for i in items
         ]
     })
+
 
 @api_view(['POST'])
 def cotizacion_responder(request, token):
@@ -647,8 +671,8 @@ def calificar_trabajo(request, token_resena):
     )
 
     enviar_email_resena_contratista(resena)
-
     return Response({'mensaje': 'Reseña enviada con éxito'}, status=status.HTTP_201_CREATED)
+
 
 @api_view(['GET'])
 def resenas_contratista(request, pk):
@@ -673,6 +697,7 @@ def resenas_contratista(request, pk):
         } for r in resenas]
     }
     return Response(data)
+
 
 @api_view(['GET'])
 def mis_resenas(request):
@@ -715,8 +740,10 @@ class ConfiguracionView(APIView):
         return Response({
             'nombre': contratista.nombre,
             'oficio': contratista.oficio,
+            'oficios': contratista.oficios if hasattr(contratista, 'oficios') and contratista.oficios else [],
             'descripcion': contratista.descripcion,
             'comuna': contratista.comuna,
+            'comunas': contratista.comunas if hasattr(contratista, 'comunas') and contratista.comunas else [],
             'experiencia': contratista.experiencia,
             'telefono': contratista.telefono,
             'activo': contratista.activo,
@@ -729,10 +756,20 @@ class ConfiguracionView(APIView):
         except Contratista.DoesNotExist:
             return Response({'error': 'No encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
-        campos = ['oficio', 'descripcion', 'comuna', 'experiencia', 'telefono', 'activo']
-        for campo in campos:
+        # Campos simples
+        for campo in ['descripcion', 'comuna', 'comunas', 'experiencia', 'telefono', 'activo']:
             if campo in request.data:
                 setattr(contratista, campo, request.data[campo])
+
+        # Oficios: sincronizar oficios[] y oficio (principal)
+        if 'oficios' in request.data:
+            oficios_lista = request.data['oficios'][:3]  # máximo 3
+            contratista.oficios = oficios_lista
+            contratista.oficio = oficios_lista[0] if oficios_lista else ''
+        elif 'oficio' in request.data:
+            # compatibilidad: si solo mandan oficio string
+            contratista.oficio = request.data['oficio']
+
         contratista.save()
         return Response({'mensaje': 'Configuración actualizada'})
 
