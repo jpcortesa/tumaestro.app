@@ -7,7 +7,7 @@ const trabajosDemo = [
   { id: 2, cliente: 'Roberto Sanchez', trabajo: 'Instalacion ducha', comuna: 'Providencia', fecha: 'Manana 10:00', estado: 'Pendiente', monto: '$85.000' },
   { id: 3, cliente: 'Carmen Valdes', trabajo: 'Reparacion caneria', comuna: 'Nunoa', fecha: 'Ayer', estado: 'Completado', monto: '$35.000' },
   { id: 4, cliente: 'Jorge Perez', trabajo: 'Cambio llave paso', comuna: 'Las Condes', fecha: 'Ayer', estado: 'Completado', monto: '$25.000' },
-  { id: 5, cliente: 'Rcihard Martinez', trabajo: 'Instalacion calefon', comuna: 'Vitacura', fecha: '03/06/2026', estado: 'Cotizacion', monto: '$120.000' },
+  { id: 5, cliente: 'Richard Martinez', trabajo: 'Instalacion calefon', comuna: 'Vitacura', fecha: '03/06/2026', estado: 'Cotizacion', monto: '$120.000' },
 ]
 
 const estadoColor = {
@@ -52,8 +52,6 @@ export default function Panel() {
   const [seccion, setSeccion] = useState('dashboard')
 
   const [trabajosReal, setTrabajosReal] = useState([])
-  const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ cliente: '', descripcion: '', comuna: '', monto: '', fecha: '', estado: 'pendiente' })
 
   const [clientesReal, setClientesReal] = useState([])
   const [showModalCliente, setShowModalCliente] = useState(false)
@@ -65,9 +63,7 @@ export default function Panel() {
   const [formCotizacion, setFormCotizacion] = useState({ cliente: '', descripcion: '', detalle: '', incluye_iva: false, tipo_impuesto: 'ninguno' })
   const [items, setItems] = useState([itemVacio()])
   const [cotizacionEditando, setCotizacionEditando] = useState(null)
-  const [linkCotizacion, setLinkCotizacion] = useState(null)
-  const [showModalLink, setShowModalLink] = useState(false)
-  const [copiado, setCopiado] = useState(false)
+  const [showModalCotizacionEnviada, setShowModalCotizacionEnviada] = useState(false)
 
   const [solicitudes, setSolicitudes] = useState([])
   const [solicitudesNoLeidas, setSolicitudesNoLeidas] = useState(0)
@@ -113,11 +109,6 @@ export default function Panel() {
     setTrabajosReal(await res.json())
   }
 
-  async function crearTrabajo() {
-    const res = await fetch(`${API}/api/trabajos/`, { method: 'POST', headers: headers(), body: JSON.stringify({ ...form, monto: parseInt(form.monto) }) })
-    if (res.ok) { setShowModal(false); setForm({ cliente: '', descripcion: '', comuna: '', monto: '', fecha: '', estado: 'pendiente' }); fetchTrabajos() }
-  }
-
   async function cambiarEstadoDirecto(id, nuevoEstado) {
     await fetch(`${API}/api/trabajos/${id}/`, { method: 'PATCH', headers: headers(), body: JSON.stringify({ estado: nuevoEstado }) })
     fetchTrabajos()
@@ -153,6 +144,8 @@ export default function Panel() {
     setFormCliente({ nombre: s.nombre_cliente, telefono: s.telefono_cliente, email: s.email_cliente || '', direccion: '', comuna: '' })
     setClienteEditando(null)
     setShowModalCliente(true)
+    // marcar como leída automáticamente al crear cliente
+    if (!s.leida) marcarLeida(s.id)
   }
 
   async function fetchCotizaciones() {
@@ -201,21 +194,12 @@ export default function Panel() {
 
   async function cambiarEstadoCotizacion(id, nuevoEstado) {
     const res = await fetch(`${API}/api/cotizaciones/${id}/`, { method: 'PATCH', headers: headers(), body: JSON.stringify({ estado: nuevoEstado }) })
-    const data = await res.json()
+    await res.json()
     fetchCotizaciones()
     if (nuevoEstado === 'aprobada') fetchTrabajos()
-    if (nuevoEstado === 'enviada' && data.token) {
-      const BASE = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
-      setLinkCotizacion(`${BASE}/cotizacion/${data.token}`)
-      setShowModalLink(true)
-      setCopiado(false)
+    if (nuevoEstado === 'enviada') {
+      setShowModalCotizacionEnviada(true)
     }
-  }
-
-  function copiarLink() {
-    navigator.clipboard.writeText(linkCotizacion)
-    setCopiado(true)
-    setTimeout(() => setCopiado(false), 2000)
   }
 
   async function fetchSolicitudes() {
@@ -231,6 +215,7 @@ export default function Panel() {
   }
 
   async function descartarSolicitud(id) {
+    // descartar marca automáticamente como leída en el backend
     await fetch(`${API}/api/mis-solicitudes/${id}/descartar/`, { method: 'PATCH', headers: headers() })
     fetchSolicitudes()
   }
@@ -263,32 +248,23 @@ export default function Panel() {
       body: JSON.stringify({ ...formConfig, experiencia: parseInt(formConfig.experiencia) || 0 })
     })
     setGuardandoConfig(false)
-    if (res.ok) {
-      setMsgConfig({ tipo: 'ok', texto: 'Perfil actualizado correctamente' })
-    } else {
-      setMsgConfig({ tipo: 'error', texto: 'Error al guardar los cambios' })
-    }
+    if (res.ok) setMsgConfig({ tipo: 'ok', texto: 'Perfil actualizado correctamente' })
+    else setMsgConfig({ tipo: 'error', texto: 'Error al guardar los cambios' })
   }
 
   async function cambiarPassword() {
     if (formPassword.password_nuevo !== formPassword.password_confirmar) {
-      setMsgPassword({ tipo: 'error', texto: 'Las contraseñas nuevas no coinciden' })
-      return
+      setMsgPassword({ tipo: 'error', texto: 'Las contraseñas nuevas no coinciden' }); return
     }
-    setGuardandoPassword(true)
-    setMsgPassword(null)
+    setGuardandoPassword(true); setMsgPassword(null)
     const res = await fetch(`${API}/api/configuracion/cambiar-password/`, {
       method: 'POST', headers: headers(),
       body: JSON.stringify({ password_actual: formPassword.password_actual, password_nuevo: formPassword.password_nuevo })
     })
     const data = await res.json()
     setGuardandoPassword(false)
-    if (res.ok) {
-      setMsgPassword({ tipo: 'ok', texto: 'Contraseña actualizada correctamente' })
-      setFormPassword({ password_actual: '', password_nuevo: '', password_confirmar: '' })
-    } else {
-      setMsgPassword({ tipo: 'error', texto: data.error || 'Error al cambiar contraseña' })
-    }
+    if (res.ok) { setMsgPassword({ tipo: 'ok', texto: 'Contraseña actualizada correctamente' }); setFormPassword({ password_actual: '', password_nuevo: '', password_confirmar: '' }) }
+    else setMsgPassword({ tipo: 'error', texto: data.error || 'Error al cambiar contraseña' })
   }
 
   async function eliminarCuenta() {
@@ -298,40 +274,23 @@ export default function Panel() {
       body: JSON.stringify({ password: passwordEliminar })
     })
     setEliminando(false)
-    if (res.ok) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('refresh')
-      window.location.href = '/'
-    } else {
-      const data = await res.json()
-      alert(data.error || 'Error al eliminar la cuenta')
-    }
+    if (res.ok) { localStorage.removeItem('token'); localStorage.removeItem('refresh'); window.location.href = '/' }
+    else { const data = await res.json(); alert(data.error || 'Error al eliminar la cuenta') }
   }
 
-  // helpers comunas múltiples
   const todasSeleccionadas = (formConfig.comunas || []).includes(TODAS_COMUNAS)
-
-  function toggleTodasComunas(checked) {
-    setFormConfig({ ...formConfig, comunas: checked ? [TODAS_COMUNAS] : [] })
-  }
-
+  function toggleTodasComunas(checked) { setFormConfig({ ...formConfig, comunas: checked ? [TODAS_COMUNAS] : [] }) }
   function agregarComuna(comuna) {
     if (!comuna || (formConfig.comunas || []).includes(comuna)) return
     setFormConfig({ ...formConfig, comunas: [...(formConfig.comunas || []), comuna] })
   }
+  function quitarComuna(comuna) { setFormConfig({ ...formConfig, comunas: (formConfig.comunas || []).filter(c => c !== comuna) }) }
 
-  function quitarComuna(comuna) {
-    setFormConfig({ ...formConfig, comunas: (formConfig.comunas || []).filter(c => c !== comuna) })
-  }
-
-  const cerrarSesion = () => {
-    localStorage.removeItem('token'); localStorage.removeItem('refresh'); window.location.href = '/'
-  }
+  const cerrarSesion = () => { localStorage.removeItem('token'); localStorage.removeItem('refresh'); window.location.href = '/' }
 
   const subtotalItems = items.reduce((acc, i) => acc + (parseInt(i.cantidad) || 0) * (parseInt(i.precio_unitario) || 0), 0)
   const tasaImpuesto = TIPOS_IMPUESTO.find(t => t.value === formCotizacion.tipo_impuesto)?.tasa || 0
-  const montoImpuesto = Math.round(subtotalItems * tasaImpuesto)
-  const total = subtotalItems + montoImpuesto
+  const total = subtotalItems + Math.round(subtotalItems * tasaImpuesto)
 
   const agregarItem = () => setItems([...items, itemVacio()])
   const quitarItem = (idx) => setItems(items.filter((_, i) => i !== idx))
@@ -347,9 +306,7 @@ export default function Panel() {
   const labelStyle = { fontSize: '13px', color: '#6B7280', fontWeight: 500 }
   const btnEditar = { background: 'none', border: '1px solid #E5E7EB', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#1B3A6B' }
 
-  const solicitudesFiltradas = solicitudes.filter(s =>
-    filtroSolicitudes === 'todas' ? true : !s.descartada
-  )
+  const solicitudesFiltradas = solicitudes.filter(s => filtroSolicitudes === 'todas' ? true : !s.descartada)
 
   const menuItems = [
     { icon: '▣', label: 'Dashboard', key: 'dashboard' },
@@ -369,14 +326,34 @@ export default function Panel() {
         <div style={{ padding: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
           <span style={{ color: '#fff', fontSize: '18px', fontWeight: '600' }}>tumaestro<span style={{ color: '#F97316' }}>.app</span></span>
         </div>
-        <div style={{ padding: '16px', flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', marginBottom: '24px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#F97316', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '700', fontSize: '14px' }}>CM</div>
-            <div>
-              <p style={{ color: '#fff', fontSize: '14px', fontWeight: '500', margin: 0 }}>{usuario.nombre || 'Mi cuenta'}</p>
-              <p style={{ color: '#93C5FD', fontSize: '12px', margin: 0 }}>{usuario.email}</p>
+
+        <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+          {/* PERFIL + LINKS ARRIBA */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', marginBottom: '8px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#F97316', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '700', fontSize: '14px', flexShrink: 0 }}>CM</div>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ color: '#fff', fontSize: '14px', fontWeight: '500', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{usuario.nombre || 'Mi cuenta'}</p>
+              <p style={{ color: '#93C5FD', fontSize: '12px', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{usuario.email}</p>
             </div>
           </div>
+
+          {/* VER PERFIL Y CERRAR SESIÓN — ARRIBA */}
+          <div style={{ marginBottom: '16px' }}>
+            <div onClick={() => window.location.href = '/'} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '6px 12px', borderRadius: '6px' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <span style={{ color: '#93C5FD', fontSize: '13px' }}>← Ver mi perfil público</span>
+            </div>
+            <div onClick={cerrarSesion} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '6px 12px', borderRadius: '6px' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <span style={{ color: '#FCA5A5', fontSize: '13px' }}>✕ Cerrar sesión</span>
+            </div>
+          </div>
+
+          <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', marginBottom: '16px' }} />
+
+          {/* NAVEGACIÓN */}
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {menuItems.map(item => (
               <div key={item.key} onClick={() => {
@@ -396,14 +373,6 @@ export default function Panel() {
               </div>
             ))}
           </nav>
-        </div>
-        <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-          <div onClick={() => window.location.href = '/'} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '8px 12px', marginBottom: '4px' }}>
-            <span style={{ color: '#93C5FD', fontSize: '14px' }}>← Ver mi perfil publico</span>
-          </div>
-          <div onClick={cerrarSesion} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '8px 12px' }}>
-            <span style={{ color: '#FCA5A5', fontSize: '14px' }}>✕ Cerrar sesion</span>
-          </div>
         </div>
       </div>
 
@@ -432,28 +401,24 @@ export default function Panel() {
           </div>
         </div>
 
-        {/* MODAL LINK COTIZACIÓN */}
-        {showModalLink && (
+        {/* MODAL COTIZACIÓN ENVIADA — sin link, solo confirmación */}
+        {showModalCotizacionEnviada && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
-            <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '520px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '40px', marginBottom: '8px' }}>📤</div>
-                <h2 style={{ fontWeight: 700, color: '#1B3A6B', margin: '0 0 8px' }}>Cotización enviada</h2>
-                <p style={{ color: '#6B7280', fontSize: '14px', margin: 0 }}>El cliente recibirá un email con el link para aprobar o rechazar la cotización.</p>
+            <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '480px', display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'center' }}>
+              <div style={{ fontSize: '48px' }}>📤</div>
+              <h2 style={{ fontWeight: 700, color: '#1B3A6B', margin: 0 }}>¡Cotización enviada!</h2>
+              <p style={{ color: '#374151', fontSize: '15px', lineHeight: '1.6', margin: 0 }}>
+                La cotización fue enviada al cliente y lo notificamos por email para que la apruebe o rechace.
+              </p>
+              <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '10px', padding: '14px 16px' }}>
+                <p style={{ fontSize: '13px', color: '#166534', margin: 0 }}>
+                  💡 Si lo deseas, también puedes contactar directamente al cliente para avisarle que tiene una cotización pendiente.
+                </p>
               </div>
-              <div style={{ background: '#F8F9FA', borderRadius: '8px', padding: '12px 16px' }}>
-                <span style={{ fontSize: '13px', color: '#374151', wordBreak: 'break-all' }}>{linkCotizacion}</span>
-              </div>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={copiarLink} style={{ flex: 1, padding: '10px', background: copiado ? '#ECFDF5' : '#1B3A6B', color: copiado ? '#065F46' : 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
-                  {copiado ? '✓ ¡Copiado!' : '📋 Copiar link'}
-                </button>
-                <button onClick={() => window.open(linkCotizacion, '_blank')} style={{ flex: 1, padding: '10px', background: 'none', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', color: '#374151' }}>
-                  👁 Ver cotización
-                </button>
-              </div>
-              <button onClick={() => setShowModalLink(false)} style={{ padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px', color: '#6B7280' }}>
-                Cerrar
+              <button
+                onClick={() => setShowModalCotizacionEnviada(false)}
+                style={{ padding: '12px', background: '#1B3A6B', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '15px' }}>
+                Entendido
               </button>
             </div>
           </div>
@@ -496,18 +461,14 @@ export default function Panel() {
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '48px', marginBottom: '12px' }}>⚠️</div>
                 <h2 style={{ fontWeight: 700, color: '#991B1B', margin: '0 0 8px' }}>Eliminar cuenta permanentemente</h2>
-                <p style={{ color: '#6B7280', fontSize: '14px', lineHeight: '1.6' }}>
-                  Esta acción es irreversible. Se eliminarán todos tus datos, trabajos, clientes y cotizaciones.
-                </p>
+                <p style={{ color: '#6B7280', fontSize: '14px', lineHeight: '1.6' }}>Esta acción es irreversible. Se eliminarán todos tus datos, trabajos, clientes y cotizaciones.</p>
               </div>
               <div>
                 <label style={labelStyle}>Ingresa tu contraseña para confirmar</label>
                 <input type="password" value={passwordEliminar} onChange={e => setPasswordEliminar(e.target.value)} placeholder="Tu contraseña actual" style={inputStyle} />
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={() => { setShowConfirmEliminar(false); setPasswordEliminar('') }} style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>
-                  Cancelar
-                </button>
+                <button onClick={() => { setShowConfirmEliminar(false); setPasswordEliminar('') }} style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>Cancelar</button>
                 <button onClick={eliminarCuenta} disabled={eliminando || !passwordEliminar}
                   style={{ flex: 1, padding: '10px', background: eliminando ? '#9CA3AF' : '#DC2626', color: 'white', border: 'none', borderRadius: '8px', cursor: eliminando ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '14px' }}>
                   {eliminando ? 'Eliminando...' : 'Eliminar cuenta'}
@@ -567,7 +528,7 @@ export default function Panel() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
               <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px' }}>
-                <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Proximos trabajos</h2>
+                <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Próximos trabajos</h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {trabajosDemo.filter(t => t.estado === 'Pendiente' || t.estado === 'En progreso').map(t => (
                     <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: '#F8F9FA', borderRadius: '10px' }}>
@@ -645,17 +606,15 @@ export default function Panel() {
                         {new Date(s.creado_en).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
+                    {/* SOLO 2 BOTONES: Crear cliente y Descartar. Ambos marcan como leída. */}
                     {!s.descartada && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
-                        {!s.leida && (
-                          <button onClick={() => marcarLeida(s.id)} style={{ background: 'none', border: '1px solid #E5E7EB', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#6B7280' }}>
-                            Marcar leída
-                          </button>
-                        )}
-                        <button onClick={() => crearClienteDesdeSolicitud(s)} style={{ background: '#F97316', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#fff', fontWeight: 600 }}>
+                        <button onClick={() => crearClienteDesdeSolicitud(s)}
+                          style={{ background: '#1B3A6B', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#fff', fontWeight: 600 }}>
                           + Crear cliente
                         </button>
-                        <button onClick={() => { if (confirm('¿Descartar esta solicitud?')) descartarSolicitud(s.id) }} style={{ background: 'none', border: '1px solid #FCA5A5', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#EF4444' }}>
+                        <button onClick={() => descartarSolicitud(s.id)}
+                          style={{ background: 'none', border: '1px solid #FCA5A5', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#EF4444' }}>
                           Descartar
                         </button>
                       </div>
@@ -667,13 +626,12 @@ export default function Panel() {
           </div>
         )}
 
-        {/* SECCIÓN TRABAJOS */}
+        {/* SECCIÓN TRABAJOS — sin botón "Nuevo trabajo" */}
         {seccion === 'trabajos' && (
           <div style={{ padding: '32px' }}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
-              <button onClick={() => setShowModal(true)} style={{ background: '#F97316', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
-                + Nuevo trabajo
-              </button>
+            <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '10px', padding: '14px 20px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '18px' }}>💡</span>
+              <p style={{ fontSize: '13px', color: '#92400E', margin: 0 }}>Los trabajos se generan automáticamente cuando el cliente aprueba una cotización. Para crear un trabajo, primero crea una cotización desde la sección <strong>Cotizaciones</strong>.</p>
             </div>
             <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -686,7 +644,7 @@ export default function Panel() {
                 </thead>
                 <tbody>
                   {trabajosReal.length === 0 ? (
-                    <tr><td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#6B7280' }}>No hay trabajos aún</td></tr>
+                    <tr><td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: '#6B7280' }}>No hay trabajos aún</td></tr>
                   ) : trabajosReal.map(t => (
                     <tr key={t.id} style={{ borderTop: '1px solid #F3F4F6' }}>
                       <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: '14px' }}>{t.cliente}</td>
@@ -711,27 +669,6 @@ export default function Panel() {
                 </tbody>
               </table>
             </div>
-            {showModal && (
-              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-                <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '480px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <h2 style={{ fontWeight: 700, color: '#1B3A6B', margin: 0 }}>Nuevo Trabajo</h2>
-                  <div><label style={labelStyle}>Cliente</label><input type="text" value={form.cliente} onChange={e => setForm({ ...form, cliente: e.target.value })} style={inputStyle} /></div>
-                  <div><label style={labelStyle}>Descripción</label><input type="text" value={form.descripcion} onChange={e => setForm({ ...form, descripcion: e.target.value })} style={inputStyle} /></div>
-                  <div><label style={labelStyle}>Comuna</label>
-                    <select value={form.comuna} onChange={e => setForm({ ...form, comuna: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
-                      <option value="">Selecciona una comuna</option>
-                      {comunas.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div><label style={labelStyle}>Monto</label><input type="number" value={form.monto} onChange={e => setForm({ ...form, monto: e.target.value })} style={inputStyle} /></div>
-                  <div><label style={labelStyle}>Fecha</label><input type="date" value={form.fecha} onChange={e => setForm({ ...form, fecha: e.target.value })} style={inputStyle} /></div>
-                  <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                    <button onClick={() => setShowModal(false)} style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>Cancelar</button>
-                    <button onClick={crearTrabajo} style={{ flex: 1, padding: '10px', background: '#F97316', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>Guardar</button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -817,9 +754,7 @@ export default function Panel() {
                             <button onClick={() => abrirEditarCotizacion(c)} style={btnEditar}>Editar</button>
                             <button onClick={() => cambiarEstadoCotizacion(c.id, 'enviada')} style={{ ...btnEditar, color: '#3730A3', borderColor: '#C7D2FE' }}>Enviar</button>
                           </>}
-                          {c.estado === 'enviada' && <>
-                            <button onClick={() => { const BASE = window.location.origin; setLinkCotizacion(`${BASE}/cotizacion/${c.token}`); setShowModalLink(true); setCopiado(false) }} style={{ ...btnEditar, color: '#3730A3', borderColor: '#C7D2FE' }}>Ver link</button>
-                          </>}
+                          {c.estado === 'enviada' && <span style={{ fontSize: '12px', color: '#3730A3', fontWeight: 500 }}>📧 Enviada al cliente</span>}
                           {c.estado === 'aprobada' && <span style={{ fontSize: '12px', color: '#065F46', fontWeight: 600 }}>✓ Aprobada</span>}
                           {c.estado === 'rechazada' && <span style={{ fontSize: '12px', color: '#991B1B' }}>✗ Rechazada</span>}
                         </td>
@@ -906,9 +841,7 @@ export default function Panel() {
           <div style={{ padding: '32px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px' }}>
               <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '12px', padding: '20px', textAlign: 'center' }}>
-                <p style={{ fontSize: '36px', fontWeight: 700, color: '#F97316', margin: '0 0 4px' }}>
-                  {resenas.promedio ? `${resenas.promedio}★` : '—'}
-                </p>
+                <p style={{ fontSize: '36px', fontWeight: 700, color: '#F97316', margin: '0 0 4px' }}>{resenas.promedio ? `${resenas.promedio}★` : '—'}</p>
                 <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Promedio general</p>
               </div>
               <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '12px', padding: '20px', textAlign: 'center' }}>
@@ -943,11 +876,7 @@ export default function Panel() {
                         {new Date(r.creado_en).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })}
                       </span>
                     </div>
-                    {r.comentario && (
-                      <p style={{ fontSize: '14px', color: '#374151', lineHeight: '1.6', margin: 0, fontStyle: 'italic' }}>
-                        "{r.comentario}"
-                      </p>
-                    )}
+                    {r.comentario && <p style={{ fontSize: '14px', color: '#374151', lineHeight: '1.6', margin: 0, fontStyle: 'italic' }}>"{r.comentario}"</p>}
                   </div>
                 ))}
               </div>
@@ -958,15 +887,10 @@ export default function Panel() {
         {/* SECCIÓN CONFIGURACIÓN */}
         {seccion === 'configuracion' && (
           <div style={{ padding: '32px', maxWidth: '720px' }}>
-
-            {/* BLOQUE 1 — PERFIL PÚBLICO */}
             <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '28px', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>Perfil público</h2>
               <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '20px' }}>Esta información es visible para los clientes en el directorio.</p>
-
-              {config === null ? (
-                <p style={{ color: '#6B7280', fontSize: '14px' }}>Cargando...</p>
-              ) : (
+              {config === null ? <p style={{ color: '#6B7280', fontSize: '14px' }}>Cargando...</p> : (
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                     <div>
@@ -981,54 +905,37 @@ export default function Panel() {
                       <input type="number" min="0" max="50" value={formConfig.experiencia} onChange={e => setFormConfig({ ...formConfig, experiencia: e.target.value })} style={inputStyle} />
                     </div>
                   </div>
-
-                  {/* SELECTOR COMUNAS MÚLTIPLES */}
                   <div style={{ marginBottom: '16px' }}>
                     <label style={labelStyle}>Comunas donde prestas servicio</label>
                     <div style={{ marginTop: '8px' }}>
-                      {/* Opción Todas */}
                       <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', border: `1px solid ${todasSeleccionadas ? '#1B3A6B' : '#E5E7EB'}`, background: todasSeleccionadas ? '#EEF2FF' : '#fff', marginBottom: '10px', cursor: 'pointer' }}>
                         <input type="checkbox" checked={todasSeleccionadas} onChange={e => toggleTodasComunas(e.target.checked)} style={{ accentColor: '#1B3A6B', width: '16px', height: '16px' }} />
                         <span style={{ fontSize: '14px', fontWeight: 600, color: '#1B3A6B' }}>🗺 Todas las comunas de Santiago</span>
                       </label>
-
-                      {/* Chips + selector cuando NO es Todas */}
                       {!todasSeleccionadas && (
                         <>
                           {(formConfig.comunas || []).length > 0 && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
                               {(formConfig.comunas || []).map(c => (
                                 <span key={c} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#EEF2FF', color: '#1B3A6B', fontSize: '13px', padding: '4px 10px', borderRadius: '999px', fontWeight: 500 }}>
-                                  {c}
-                                  <span onClick={() => quitarComuna(c)} style={{ cursor: 'pointer', color: '#6B7280', fontWeight: 700, lineHeight: 1 }}>×</span>
+                                  {c}<span onClick={() => quitarComuna(c)} style={{ cursor: 'pointer', color: '#6B7280', fontWeight: 700, lineHeight: 1 }}>×</span>
                                 </span>
                               ))}
                             </div>
                           )}
-                          <select
-                            value=""
-                            onChange={e => { agregarComuna(e.target.value) }}
-                            style={{ ...inputStyle, background: '#fff', marginTop: 0 }}>
+                          <select value="" onChange={e => agregarComuna(e.target.value)} style={{ ...inputStyle, background: '#fff', marginTop: 0 }}>
                             <option value="">+ Agregar una comuna...</option>
-                            {comunas.filter(c => !(formConfig.comunas || []).includes(c)).map(c => (
-                              <option key={c} value={c}>{c}</option>
-                            ))}
+                            {comunas.filter(c => !(formConfig.comunas || []).includes(c)).map(c => <option key={c} value={c}>{c}</option>)}
                           </select>
-                          {(formConfig.comunas || []).length === 0 && (
-                            <p style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '6px' }}>Selecciona al menos una comuna o marca "Todas las comunas"</p>
-                          )}
+                          {(formConfig.comunas || []).length === 0 && <p style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '6px' }}>Selecciona al menos una comuna o marca "Todas las comunas"</p>}
                         </>
                       )}
                     </div>
                   </div>
-
                   <div style={{ marginBottom: '20px' }}>
                     <label style={labelStyle}>Descripción / Sobre mí</label>
-                    <textarea value={formConfig.descripcion} onChange={e => setFormConfig({ ...formConfig, descripcion: e.target.value })}
-                      rows={4} placeholder="Cuéntales a tus clientes quién eres y qué haces..."
-                      style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} />
+                    <textarea value={formConfig.descripcion} onChange={e => setFormConfig({ ...formConfig, descripcion: e.target.value })} rows={4} placeholder="Cuéntales a tus clientes quién eres y qué haces..." style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} />
                   </div>
-
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: '#F8F9FA', borderRadius: '10px', marginBottom: '20px' }}>
                     <div>
                       <p style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>Perfil público visible</p>
@@ -1039,67 +946,47 @@ export default function Panel() {
                       <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#fff', position: 'absolute', top: '3px', left: formConfig.activo ? '23px' : '3px', transition: 'left 0.2s' }} />
                     </div>
                   </div>
-
                   {msgConfig && (
                     <div style={{ padding: '10px 14px', borderRadius: '8px', marginBottom: '16px', background: msgConfig.tipo === 'ok' ? '#ECFDF5' : '#FEE2E2', color: msgConfig.tipo === 'ok' ? '#065F46' : '#991B1B', fontSize: '14px' }}>
                       {msgConfig.tipo === 'ok' ? '✓ ' : '✗ '}{msgConfig.texto}
                     </div>
                   )}
-
-                  <button onClick={guardarConfig} disabled={guardandoConfig}
-                    style={{ background: guardandoConfig ? '#9CA3AF' : '#1B3A6B', color: 'white', border: 'none', padding: '10px 24px', borderRadius: '8px', cursor: guardandoConfig ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '14px' }}>
+                  <button onClick={guardarConfig} disabled={guardandoConfig} style={{ background: guardandoConfig ? '#9CA3AF' : '#1B3A6B', color: 'white', border: 'none', padding: '10px 24px', borderRadius: '8px', cursor: guardandoConfig ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '14px' }}>
                     {guardandoConfig ? 'Guardando...' : 'Guardar cambios'}
                   </button>
                 </>
               )}
             </div>
 
-            {/* BLOQUE 2 — CUENTA */}
             <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '28px', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>Cuenta</h2>
               <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '20px' }}>Datos de acceso y contacto.</p>
-
               <div style={{ marginBottom: '16px' }}>
                 <label style={labelStyle}>Email (no se puede cambiar)</label>
                 <input type="email" value={config?.email || ''} disabled style={{ ...inputStyle, background: '#F9FAFB', color: '#9CA3AF', cursor: 'not-allowed' }} />
               </div>
-
               <div style={{ marginBottom: '20px' }}>
                 <label style={labelStyle}>Teléfono de contacto</label>
                 <input type="text" value={formConfig.telefono} onChange={e => setFormConfig({ ...formConfig, telefono: e.target.value })} style={inputStyle} placeholder="+56 9 1234 5678" />
               </div>
-
-              <div style={{ borderTop: '1px solid #F3F4F6', paddingTop: '20px', marginTop: '8px' }}>
+              <div style={{ borderTop: '1px solid #F3F4F6', paddingTop: '20px' }}>
                 <p style={{ fontSize: '14px', fontWeight: 600, color: '#111827', marginBottom: '16px' }}>Cambiar contraseña</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div>
-                    <label style={labelStyle}>Contraseña actual</label>
-                    <input type="password" value={formPassword.password_actual} onChange={e => setFormPassword({ ...formPassword, password_actual: e.target.value })} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Nueva contraseña</label>
-                    <input type="password" value={formPassword.password_nuevo} onChange={e => setFormPassword({ ...formPassword, password_nuevo: e.target.value })} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Confirmar nueva contraseña</label>
-                    <input type="password" value={formPassword.password_confirmar} onChange={e => setFormPassword({ ...formPassword, password_confirmar: e.target.value })} style={inputStyle} />
-                  </div>
+                  <div><label style={labelStyle}>Contraseña actual</label><input type="password" value={formPassword.password_actual} onChange={e => setFormPassword({ ...formPassword, password_actual: e.target.value })} style={inputStyle} /></div>
+                  <div><label style={labelStyle}>Nueva contraseña</label><input type="password" value={formPassword.password_nuevo} onChange={e => setFormPassword({ ...formPassword, password_nuevo: e.target.value })} style={inputStyle} /></div>
+                  <div><label style={labelStyle}>Confirmar nueva contraseña</label><input type="password" value={formPassword.password_confirmar} onChange={e => setFormPassword({ ...formPassword, password_confirmar: e.target.value })} style={inputStyle} /></div>
                 </div>
-
                 {msgPassword && (
                   <div style={{ padding: '10px 14px', borderRadius: '8px', margin: '16px 0 0', background: msgPassword.tipo === 'ok' ? '#ECFDF5' : '#FEE2E2', color: msgPassword.tipo === 'ok' ? '#065F46' : '#991B1B', fontSize: '14px' }}>
                     {msgPassword.tipo === 'ok' ? '✓ ' : '✗ '}{msgPassword.texto}
                   </div>
                 )}
-
-                <button onClick={cambiarPassword} disabled={guardandoPassword}
-                  style={{ marginTop: '16px', background: guardandoPassword ? '#9CA3AF' : '#1B3A6B', color: 'white', border: 'none', padding: '10px 24px', borderRadius: '8px', cursor: guardandoPassword ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '14px' }}>
+                <button onClick={cambiarPassword} disabled={guardandoPassword} style={{ marginTop: '16px', background: guardandoPassword ? '#9CA3AF' : '#1B3A6B', color: 'white', border: 'none', padding: '10px 24px', borderRadius: '8px', cursor: guardandoPassword ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '14px' }}>
                   {guardandoPassword ? 'Actualizando...' : 'Actualizar contraseña'}
                 </button>
               </div>
             </div>
 
-            {/* BLOQUE 3 — ZONA DE PELIGRO */}
             <div style={{ background: '#fff', border: '1px solid #FCA5A5', borderRadius: '16px', padding: '28px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#991B1B', marginBottom: '4px' }}>Zona de peligro</h2>
               <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '20px' }}>Acciones irreversibles. Procede con cuidado.</p>
@@ -1108,13 +995,11 @@ export default function Panel() {
                   <p style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 4px' }}>Eliminar mi cuenta</p>
                   <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Se eliminarán permanentemente todos tus datos.</p>
                 </div>
-                <button onClick={() => setShowConfirmEliminar(true)}
-                  style={{ background: 'none', border: '1px solid #EF4444', color: '#EF4444', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, flexShrink: 0 }}>
+                <button onClick={() => setShowConfirmEliminar(true)} style={{ background: 'none', border: '1px solid #EF4444', color: '#EF4444', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, flexShrink: 0 }}>
                   Eliminar cuenta
                 </button>
               </div>
             </div>
-
           </div>
         )}
 
