@@ -163,10 +163,10 @@ export default function PerfilContratista() {
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '6px', alignItems: 'center' }}>
                     {(contratista.oficios?.length > 0 ? contratista.oficios : [contratista.oficio]).map((o, i) => (
                       <span key={i} style={{ background: '#EEF2FF', color: '#1B3A6B', fontSize: '13px', padding: '3px 12px', borderRadius: '999px', fontWeight: 500 }}>
-                         {o}
+                        {o}
                       </span>
                     ))}
-                   <span style={{ fontSize: '14px', color: '#9CA3AF' }}>· {contratista.experiencia} años de experiencia</span>
+                    <span style={{ fontSize: '14px', color: '#9CA3AF' }}>· {contratista.experiencia} años de experiencia</span>
                   </div>
                   <p style={{ fontSize: '14px', color: '#6B7280', margin: 0 }}>
                     {mostrarComunas(contratista)}
@@ -188,11 +188,20 @@ export default function PerfilContratista() {
             </div>
 
             <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '28px', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Sobre mi</h2>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Sobre mí</h2>
               <p style={{ fontSize: '15px', color: '#374151', lineHeight: '1.7' }}>
                 {contratista.descripcion || 'Este profesional aún no ha completado su descripción.'}
               </p>
             </div>
+
+            {contratista.certificacion && contratista.certificacion.trim() && (
+              <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '28px', marginBottom: '24px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>🎓 Certificaciones y títulos</h2>
+                <p style={{ fontSize: '15px', color: '#374151', lineHeight: '1.7', margin: 0 }}>
+                  {contratista.certificacion}
+                </p>
+              </div>
+            )}
 
             <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '28px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
