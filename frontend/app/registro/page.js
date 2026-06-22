@@ -104,7 +104,7 @@ export default function Registro() {
   const [emailRegistrado, setEmailRegistrado] = useState('')
   const [form, setForm] = useState({
     nombre: '', apellido: '', rut: '', email: '', email_confirmar: '', telefono: '',
-    oficios: [], oficio_otro: '', comuna: '', experiencia: '', descripcion: '',
+    oficios: [], oficio_otro: '', comuna: '', experiencia: '', descripcion: '', certificacion: '',
     password: '', confirmar: ''
   })
   const [enviado, setEnviado] = useState(false)
@@ -193,6 +193,7 @@ export default function Registro() {
           comuna: form.comuna,
           experiencia: form.experiencia,
           descripcion: form.descripcion,
+          certificacion: form.certificacion.trim(),
         })
       })
       const data = await res.json()
@@ -386,6 +387,30 @@ export default function Registro() {
                 <textarea value={form.descripcion} onChange={e => actualizar('descripcion', e.target.value)} placeholder="Describe tu experiencia, especialidades y tipo de trabajos que realizas..." rows={4}
                   style={{ ...inputStyle, resize: 'none', fontFamily: 'inherit', borderColor: errores.descripcion ? '#EF4444' : '#E5E7EB' }} />
                 <ErrorMsg msg={errores.descripcion} />
+              </div>
+              <div style={{ marginTop: '16px' }}>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', padding: '14px', borderRadius: '10px', border: '1px solid ' + (form.certificacion !== '' ? '#1B3A6B' : '#E5E7EB'), background: form.certificacion !== '' ? '#EEF2FF' : '#F8F9FA' }}>
+                  <input
+                    type="checkbox"
+                    checked={form.certificacion !== ''}
+                    onChange={e => actualizar('certificacion', e.target.checked ? ' ' : '')}
+                    style={{ accentColor: '#1B3A6B', width: '16px', height: '16px', marginTop: '2px', flexShrink: 0 }}
+                  />
+                  <div>
+                    <p style={{ fontSize: '14px', fontWeight: '600', color: '#111827', margin: '0 0 2px' }}>🎓 Cuento con certificaciones o títulos</p>
+                    <p style={{ fontSize: '12px', color: '#6B7280', margin: 0 }}>Ej: título técnico, certificación de empresa, curso especializado</p>
+                  </div>
+                </label>
+                {form.certificacion !== '' && (
+                  <textarea
+                    value={form.certificacion.trim() === '' ? '' : form.certificacion}
+                    onChange={e => actualizar('certificacion', e.target.value)}
+                    placeholder="Describe tus certificaciones o títulos... Ej: Técnico en instalaciones eléctricas SEC, certificado por Siemens Chile"
+                    rows={3}
+                    autoFocus
+                    style={{ ...inputStyle, resize: 'none', fontFamily: 'inherit', marginTop: '10px' }}
+                  />
+                )}
               </div>
             </div>
           )}

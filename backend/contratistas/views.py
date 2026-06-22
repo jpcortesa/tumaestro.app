@@ -318,6 +318,7 @@ class RegistroView(APIView):
         nombre = data.get('nombre', '')
         apellido = data.get('apellido', '')
         rut = data.get('rut', '')
+        certificacion = data.get('certificacion', '')
         oficios_lista = data.get('oficios', [])
         oficio_legacy = data.get('oficio', '')
         if not oficios_lista and oficio_legacy:
@@ -346,6 +347,7 @@ class RegistroView(APIView):
             oficios=oficios_lista,
             telefono=telefono,
             rut=rut,
+            certificacion=certificacion,
             comuna=comuna,
             experiencia=experiencia,
             descripcion=descripcion,
@@ -532,6 +534,7 @@ def contratistas_publicos(request):
             'comunas': c.comunas if hasattr(c, 'comunas') and c.comunas else [],
             'experiencia': c.experiencia,
             'descripcion': c.descripcion,
+            'certificacion': c.certificacion,
             'verificado': c.verificado,
             'promedio_resenas': promedio,
             'total_resenas': total,
@@ -555,6 +558,7 @@ def contratista_publico(request, pk):
         'comunas': c.comunas if hasattr(c, 'comunas') and c.comunas else [],
         'experiencia': c.experiencia,
         'descripcion': c.descripcion,
+        'certificacion': c.certificacion,
         'verificado': c.verificado,
         'telefono': c.telefono,
     })
