@@ -104,7 +104,7 @@ export default function Registro() {
   const [emailRegistrado, setEmailRegistrado] = useState('')
   const [form, setForm] = useState({
     nombre: '', apellido: '', rut: '', email: '', email_confirmar: '', telefono: '',
-    oficios: [], oficio_otro: '', comuna: '', experiencia: '', descripcion: '', certificacion: '',
+    oficios: [], oficio_otro: '', comunas_seleccionadas: [], todas_comunas: false, experiencia: '', descripcion: '', certificacion: '',
     password: '', confirmar: ''
   })
   const [enviado, setEnviado] = useState(false)
@@ -115,7 +115,32 @@ export default function Registro() {
     setErrores(prev => ({ ...prev, [campo]: null }))
   }
 
-  const todasSeleccionadas = form.comuna === TODAS_COMUNAS
+  const todasSeleccionadas = form.todas_comunas
+
+  function toggleTodosComunas() {
+    if (form.todas_comunas) {
+      // Deseleccionar "todas"
+      actualizar('todas_comunas', false)
+    } else {
+      // Seleccionar "todas" y limpiar selección individual
+      actualizar('todas_comunas', true)
+      actualizar('comunas_seleccionadas', [])
+    }
+  }
+
+  function toggleComunaIndividual(comuna) {
+    let nuevas = [...form.comunas_seleccionadas]
+    if (nuevas.includes(comuna)) {
+      nuevas = nuevas.filter(c => c !== comuna)
+    } else {
+      nuevas.push(comuna)
+    }
+    actualizar('comunas_seleccionadas', nuevas)
+    // Desactivar "todas" si hay selección individual
+    if (nuevas.length > 0 && form.todas_comunas) {
+      actualizar('todas_comunas', false)
+    }
+  }
 
   function agregarOficio(oficio) {
     if (!oficio || form.oficios.includes(oficio)) return
@@ -151,7 +176,7 @@ export default function Registro() {
     const e = {}
     if (form.oficios.length === 0) e.oficios = 'Selecciona al menos un oficio'
     if (tieneOtro && !form.oficio_otro.trim()) e.oficio_otro = 'Escribe el nombre de tu oficio'
-    if (!form.comuna) e.comuna = 'Selecciona una zona de trabajo'
+    if (!form.todas_comunas && form.comunas_seleccionadas.length === 0) e.comunas = 'Selecciona al menos una comuna'
     if (!form.experiencia || parseInt(form.experiencia) < 0) e.experiencia = 'Ingresa tus años de experiencia'
     if (!form.descripcion.trim()) e.descripcion = 'La descripción es requerida'
     return e
@@ -175,6 +200,7 @@ export default function Registro() {
     try {
       const oficiosFinales = form.oficios.map(o => o === 'Otro' ? form.oficio_otro.trim() : o)
       const telefonoFinal = '+56 ' + form.telefono.trim()
+      const comunasFinal = form.todas_comunas ? [TODAS_COMUNAS] : form.comunas_seleccionadas
       const res = await fetch(
         process.env.NEXT_PUBLIC_API_URL
           ? process.env.NEXT_PUBLIC_API_URL + '/api/registro/'
@@ -190,7 +216,8 @@ export default function Registro() {
           telefono: telefonoFinal,
           oficios: oficiosFinales,
           oficio: oficiosFinales[0] || '',
-          comuna: form.comuna,
+          comunas: comunasFinal,
+          comuna: comunasFinal[0] || '',
           experiencia: form.experiencia,
           descripcion: form.descripcion,
           certificacion: form.certificacion.trim(),
@@ -363,18 +390,45 @@ export default function Registro() {
               )}
               <div style={{ marginBottom: '16px' }}>
                 <label style={labelStyle}>¿Dónde trabajas? *</label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', border: '1px solid ' + (todasSeleccionadas ? '#1B3A6B' : '#E5E7EB'), background: todasSeleccionadas ? '#EEF2FF' : '#fff', marginBottom: '8px', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={todasSeleccionadas} onChange={e => actualizar('comuna', e.target.checked ? TODAS_COMUNAS : '')} style={{ accentColor: '#1B3A6B', width: '16px', height: '16px' }} />
+                
+                {/* Checkbox "Todas las comunas" */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', borderRadius: '8px', border: '1px solid ' + (todasSeleccionadas ? '#1B3A6B' : '#E5E7EB'), background: todasSeleccionadas ? '#EEF2FF' : '#fff', marginBottom: '12px', cursor: 'pointer' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={todasSeleccionadas} 
+                    onChange={toggleTodosComunas}
+                    style={{ accentColor: '#1B3A6B', width: '16px', height: '16px' }} 
+                  />
                   <span style={{ fontSize: '14px', fontWeight: 600, color: '#1B3A6B' }}>🗺 Todas las comunas de Santiago</span>
                 </label>
+
+                {/* Checkboxes de comunas individuales */}
                 {!todasSeleccionadas && (
-                  <select value={form.comuna} onChange={e => actualizar('comuna', e.target.value)} style={{ ...inputStyle, background: '#fff', borderColor: errores.comuna ? '#EF4444' : '#E5E7EB' }}>
-                    <option value="">Selecciona una comuna</option>
-                    {comunas.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '12px', background: '#F8F9FA', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                    {comunas.map(c => (
+                      <label key={c} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={form.comunas_seleccionadas.includes(c)}
+                          onChange={() => toggleComunaIndividual(c)}
+                          style={{ accentColor: '#1B3A6B', width: '14px', height: '14px' }}
+                        />
+                        <span style={{ fontSize: '13px', color: '#374151' }}>{c}</span>
+                      </label>
+                    ))}
+                  </div>
                 )}
-                <ErrorMsg msg={errores.comuna} />
-                <p style={{ fontSize: '12px', color: '#6B7280', margin: '6px 0 0' }}>Puedes agregar más comunas desde tu perfil una vez registrado.</p>
+
+                {errores.comunas && (
+                  <p style={{ fontSize: '12px', color: '#EF4444', margin: '6px 0 0' }}>{errores.comunas}</p>
+                )}
+
+                {form.todas_comunas && (
+                  <p style={{ fontSize: '12px', color: '#059669', margin: '6px 0 0' }}>✓ Trabajarás en toda Santiago</p>
+                )}
+                {!form.todas_comunas && form.comunas_seleccionadas.length > 0 && (
+                  <p style={{ fontSize: '12px', color: '#059669', margin: '6px 0 0' }}>✓ {form.comunas_seleccionadas.length} comuna{form.comunas_seleccionadas.length !== 1 ? 's' : ''} seleccionada{form.comunas_seleccionadas.length !== 1 ? 's' : ''}</p>
+                )}
               </div>
               <div style={{ marginBottom: '16px' }}>
                 <label style={labelStyle}>Años de experiencia *</label>
@@ -447,7 +501,7 @@ export default function Registro() {
                   <span style={{ fontSize: '13px', color: '#6B7280' }}>Email: <strong style={{ color: '#111827' }}>{form.email}</strong></span>
                   <span style={{ fontSize: '13px', color: '#6B7280' }}>Teléfono: <strong style={{ color: '#111827' }}>+56 {form.telefono}</strong></span>
                   <span style={{ fontSize: '13px', color: '#6B7280' }}>Oficios: <strong style={{ color: '#111827' }}>{form.oficios.map(o => o === 'Otro' ? form.oficio_otro : o).join(', ')}</strong></span>
-                  <span style={{ fontSize: '13px', color: '#6B7280' }}>Zona: <strong style={{ color: '#111827' }}>{form.comuna === TODAS_COMUNAS ? '🗺 Toda Santiago' : form.comuna}</strong></span>
+                  <span style={{ fontSize: '13px', color: '#6B7280' }}>Zonas: <strong style={{ color: '#111827' }}>{form.todas_comunas ? '🗺 Toda Santiago' : form.comunas_seleccionadas.join(', ')}</strong></span>
                   <span style={{ fontSize: '13px', color: '#6B7280' }}>Experiencia: <strong style={{ color: '#111827' }}>{form.experiencia} años</strong></span>
                 </div>
               </div>
