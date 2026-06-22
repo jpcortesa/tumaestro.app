@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from 'react'
 
-const oficios = ['Todos', 'Gasfitero', 'Electricista', 'Pintor', 'Cerrajero', 'Jardinero', 'Carpintero']
+const oficios = [
+  'Todos', 'Gasfíter', 'Electricista', 'Pintor', 'Cerrajero',
+  'Carpintero', 'Jardinero', 'Albañil', 'Instalador de pisos',
+  'Climatización', 'Refrigeración', 'Vidriería', 'Mecánica automotriz', 'Otro'
+]
 
 const comunas = [
   'Cerrillos', 'Cerro Navia', 'Conchalí', 'El Bosque', 'Estación Central',
@@ -43,7 +47,10 @@ export default function Home() {
   }, [])
 
   const filtrados = contratistas.filter(c => {
-    const coincideOficio = filtroOficio === 'Todos' || c.oficio?.toLowerCase() === filtroOficio.toLowerCase()
+    const coincideOficio = filtroOficio === 'Todos' || (
+      c.oficio?.toLowerCase() === filtroOficio.toLowerCase() ||
+      c.oficios?.some(o => o.toLowerCase() === filtroOficio.toLowerCase())
+    )
 
     const coincideComuna = filtroComuna === 'Todas' || (() => {
       if (c.comunas?.includes('Todas las comunas de Santiago')) return true
@@ -53,8 +60,9 @@ export default function Home() {
 
     const coincideBusqueda = busqueda.trim() === '' || (
       c.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
+      c.oficios?.some(o => o.toLowerCase().includes(busqueda.toLowerCase())) ||
       c.oficio?.toLowerCase().includes(busqueda.toLowerCase()) ||
-      c.descripcion?.toLowerCase().includes(busqueda.toLowerCase())
+     c.descripcion?.toLowerCase().includes(busqueda.toLowerCase())
     )
 
     return coincideOficio && coincideComuna && coincideBusqueda

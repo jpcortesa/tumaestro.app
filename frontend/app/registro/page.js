@@ -2,7 +2,11 @@
 
 import { useState } from 'react'
 
-const LISTA_OFICIOS = ['Gasfitero', 'Electricista', 'Pintor', 'Cerrajero', 'Maestro chasquilla', 'Carpintero', 'Jardinero', 'Albanil', 'Tecnico en climatizacion', 'Técnico en refrigeración', 'Instalador de pisos', 'Techador', 'Plomero', 'Otro']
+const LISTA_OFICIOS = [
+  'Gasfíter', 'Electricista', 'Pintor', 'Cerrajero', 'Carpintero',
+  'Jardinero', 'Albañil', 'Instalador de pisos', 'Climatización',
+  'Refrigeración', 'Vidriería', 'Mecánica automotriz', 'Otro'
+]
 
 const comunas = [
   'Cerrillos', 'Cerro Navia', 'Conchalí', 'El Bosque', 'Estación Central',
@@ -15,7 +19,7 @@ const comunas = [
 ]
 
 const TODAS_COMUNAS = 'Todas las comunas de Santiago'
-const MAX_OFICIOS = 3
+const MAX_OFICIOS = 5
 
 const inputStyle = { width: '100%', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '10px 14px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }
 const labelStyle = { fontSize: '13px', fontWeight: '500', color: '#374151', display: 'block', marginBottom: '6px' }

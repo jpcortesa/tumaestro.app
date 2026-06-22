@@ -160,9 +160,14 @@ export default function PerfilContratista() {
                       <span style={{ background: '#ECFDF5', color: '#059669', fontSize: '13px', padding: '4px 12px', borderRadius: '999px', fontWeight: '500' }}>Verificado</span>
                     )}
                   </div>
-                  <p style={{ fontSize: '15px', color: '#6B7280', marginBottom: '6px' }}>
-                    {contratista.oficio} · {contratista.experiencia} años de experiencia
-                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '6px', alignItems: 'center' }}>
+                    {(contratista.oficios?.length > 0 ? contratista.oficios : [contratista.oficio]).map((o, i) => (
+                      <span key={i} style={{ background: '#EEF2FF', color: '#1B3A6B', fontSize: '13px', padding: '3px 12px', borderRadius: '999px', fontWeight: 500 }}>
+                         {o}
+                      </span>
+                    ))}
+                   <span style={{ fontSize: '14px', color: '#9CA3AF' }}>· {contratista.experiencia} años de experiencia</span>
+                  </div>
                   <p style={{ fontSize: '14px', color: '#6B7280', margin: 0 }}>
                     {mostrarComunas(contratista)}
                   </p>
