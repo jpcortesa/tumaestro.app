@@ -33,6 +33,31 @@ function validarTelefonoChile(num) {
   return /^9\d{8}$/.test(num.replace(/\s/g, ''))
 }
 
+function validarRutChileno(rut) {
+  const limpio = rut.replace(/[\.\-]/g, '').toUpperCase()
+  if (limpio.length < 2) return false
+  const cuerpo = limpio.slice(0, -1)
+  const dv = limpio.slice(-1)
+  if (!/^\d+$/.test(cuerpo)) return false
+  let suma = 0
+  let multiplo = 2
+  for (let i = cuerpo.length - 1; i >= 0; i--) {
+    suma += parseInt(cuerpo[i]) * multiplo
+    multiplo = multiplo === 7 ? 2 : multiplo + 1
+  }
+  const dvEsperado = 11 - (suma % 11)
+  const dvCalculado = dvEsperado === 11 ? '0' : dvEsperado === 10 ? 'K' : String(dvEsperado)
+  return dv === dvCalculado
+}
+
+function formatearRut(rut) {
+  const limpio = rut.replace(/[\.\-]/g, '').toUpperCase()
+  if (limpio.length < 2) return rut
+  const cuerpo = limpio.slice(0, -1)
+  const dv = limpio.slice(-1)
+  return cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '-' + dv
+}
+
 function ModalAviso({ onAceptar, onCerrar }) {
   const [leido, setLeido] = useState(false)
   const puntos = [
@@ -78,7 +103,7 @@ export default function Registro() {
   const [paso, setPaso] = useState(1)
   const [emailRegistrado, setEmailRegistrado] = useState('')
   const [form, setForm] = useState({
-    nombre: '', apellido: '', email: '', email_confirmar: '', telefono: '',
+    nombre: '', apellido: '', rut: '', email: '', email_confirmar: '', telefono: '',
     oficios: [], oficio_otro: '', comuna: '', experiencia: '', descripcion: '',
     password: '', confirmar: ''
   })
@@ -111,6 +136,8 @@ export default function Registro() {
     const e = {}
     if (!form.nombre.trim()) e.nombre = 'El nombre es requerido'
     if (!form.apellido.trim()) e.apellido = 'El apellido es requerido'
+    if (!form.rut.trim()) { e.rut = 'El RUT es requerido' }
+    else if (!validarRutChileno(form.rut)) { e.rut = 'RUT inválido. Verifica el dígito verificador' }
     if (!form.email.trim()) { e.email = 'El email es requerido' }
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { e.email = 'Email inválido' }
     if (!form.email_confirmar.trim()) { e.email_confirmar = 'Confirma tu email' }
@@ -157,6 +184,7 @@ export default function Registro() {
         body: JSON.stringify({
           nombre: form.nombre,
           apellido: form.apellido,
+          rut: form.rut,
           email: form.email,
           password: form.password,
           telefono: telefonoFinal,
@@ -249,6 +277,21 @@ export default function Registro() {
                   <input value={form.apellido} onChange={e => actualizar('apellido', e.target.value)} placeholder="Muñoz" style={{ ...inputStyle, borderColor: errores.apellido ? '#EF4444' : '#E5E7EB' }} />
                   <ErrorMsg msg={errores.apellido} />
                 </div>
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={labelStyle}>RUT *</label>
+                <input
+                  value={form.rut}
+                  onChange={e => actualizar('rut', e.target.value.replace(/[^0-9kK\.\-]/g, ''))}
+                  onBlur={() => { if (form.rut.length > 1) actualizar('rut', formatearRut(form.rut)) }}
+                  placeholder="Ej: 12.345.678-9"
+                  maxLength={12}
+                  style={{ ...inputStyle, borderColor: errores.rut ? '#EF4444' : (form.rut && validarRutChileno(form.rut)) ? '#059669' : '#E5E7EB' }}
+                />
+                <ErrorMsg msg={errores.rut} />
+                {!errores.rut && form.rut && validarRutChileno(form.rut) && (
+                  <p style={{ fontSize: '12px', color: '#059669', margin: '4px 0 0' }}>✓ RUT válido</p>
+                )}
               </div>
               <div style={{ marginBottom: '16px' }}>
                 <label style={labelStyle}>Email *</label>
@@ -375,6 +418,7 @@ export default function Registro() {
                 <p style={{ fontSize: '13px', color: '#374151', fontWeight: '500', marginBottom: '8px' }}>Resumen de tu registro:</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <span style={{ fontSize: '13px', color: '#6B7280' }}>Nombre: <strong style={{ color: '#111827' }}>{form.nombre} {form.apellido}</strong></span>
+                  <span style={{ fontSize: '13px', color: '#6B7280' }}>RUT: <strong style={{ color: '#111827' }}>{form.rut}</strong></span>
                   <span style={{ fontSize: '13px', color: '#6B7280' }}>Email: <strong style={{ color: '#111827' }}>{form.email}</strong></span>
                   <span style={{ fontSize: '13px', color: '#6B7280' }}>Teléfono: <strong style={{ color: '#111827' }}>+56 {form.telefono}</strong></span>
                   <span style={{ fontSize: '13px', color: '#6B7280' }}>Oficios: <strong style={{ color: '#111827' }}>{form.oficios.map(o => o === 'Otro' ? form.oficio_otro : o).join(', ')}</strong></span>

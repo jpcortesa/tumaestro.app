@@ -317,6 +317,7 @@ class RegistroView(APIView):
         password = data.get('password', '')
         nombre = data.get('nombre', '')
         apellido = data.get('apellido', '')
+        rut = data.get('rut', '')
         oficios_lista = data.get('oficios', [])
         oficio_legacy = data.get('oficio', '')
         if not oficios_lista and oficio_legacy:
@@ -344,6 +345,7 @@ class RegistroView(APIView):
             oficio=oficio_principal,
             oficios=oficios_lista,
             telefono=telefono,
+            rut=rut,
             comuna=comuna,
             experiencia=experiencia,
             descripcion=descripcion,
@@ -835,7 +837,7 @@ class ConfiguracionView(APIView):
                 setattr(contratista, campo, request.data[campo])
 
         if 'oficios' in request.data:
-            oficios_lista = request.data['oficios'][:3]
+            oficios_lista = request.data['oficios'][:5]
             contratista.oficios = oficios_lista
             contratista.oficio = oficios_lista[0] if oficios_lista else ''
         elif 'oficio' in request.data:

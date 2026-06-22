@@ -8,6 +8,7 @@ class Contratista(models.Model):
     oficio = models.CharField(max_length=100)
     oficios = models.JSONField(default=list, blank=True)
     telefono = models.CharField(max_length=20)
+    rut = models.CharField(max_length=12, blank=True)
     descripcion = models.TextField(blank=True)
     comuna = models.CharField(max_length=100, blank=True)
     comunas = models.JSONField(default=list, blank=True)
