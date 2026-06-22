@@ -319,6 +319,11 @@ class RegistroView(APIView):
         apellido = data.get('apellido', '')
         rut = data.get('rut', '')
         certificacion = data.get('certificacion', '')
+        
+        # Validar que el RUT no esté registrado
+        if rut and Contratista.objects.filter(rut=rut).exists():
+            return Response({'error': 'Este RUT ya está registrado en la plataforma'}, status=400)
+        
         oficios_lista = data.get('oficios', [])
         oficio_legacy = data.get('oficio', '')
         if not oficios_lista and oficio_legacy:
