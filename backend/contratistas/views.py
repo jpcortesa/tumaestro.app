@@ -706,14 +706,18 @@ def cotizacion_responder(request, token):
     if respuesta not in ['aprobada', 'rechazada']:
         return Response({'error': 'Estado inválido'}, status=status.HTTP_400_BAD_REQUEST)
 
-    if respuesta == 'aprobada':
-        cotizacion.aprobar()
-        enviar_email_trabajo_iniciado(cotizacion)
-    else:
-        cotizacion.estado = 'rechazada'
-        cotizacion.save()
-
-    return Response({'estado': cotizacion.estado})
+    try:
+        if respuesta == 'aprobada':
+            cotizacion.aprobar()
+            enviar_email_trabajo_iniciado(cotizacion)
+        else:
+            cotizacion.estado = 'rechazada'
+            cotizacion.save()
+        
+        return Response({'estado': cotizacion.estado, 'mensaje': 'Operación exitosa'})
+    except Exception as e:
+        print(f"Error en cotizacion_responder: {e}")
+        return Response({'error': f'Error al procesar: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET', 'POST'])

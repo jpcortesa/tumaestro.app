@@ -60,21 +60,33 @@ class Cotizacion(models.Model):
     def __str__(self):
         return f"Cotización {self.id} - {self.cliente.nombre}"
 
+    def save(self, *args, **kwargs):
+        # Si cambia a aprobada y no hay trabajo, crear uno
+        if self.estado == 'aprobada' and not Trabajo.objects.filter(
+            usuario=self.usuario,
+            cliente=self.cliente.nombre,
+            descripcion=self.descripcion
+        ).exists():
+            try:
+                Trabajo.objects.create(
+                    usuario=self.usuario,
+                    cliente=self.cliente.nombre,
+                    cliente_email=self.cliente.email,
+                    cliente_rut=self.cliente.rut,
+                    descripcion=self.descripcion,
+                    comuna=self.cliente.comuna,
+                    monto=self.monto,
+                    incluye_iva=self.incluye_iva,
+                    estado='pendiente',
+                    fecha=self.creado_en.date(),
+                )
+            except Exception as e:
+                print(f"Error creando trabajo desde save: {e}")
+        super().save(*args, **kwargs)
+
     def aprobar(self):
         self.estado = 'aprobada'
         self.save()
-        Trabajo.objects.create(
-            usuario=self.usuario,
-            cliente=self.cliente.nombre,
-            cliente_email=self.cliente.email,
-            cliente_rut=self.cliente.rut,
-            descripcion=self.descripcion,
-            comuna=self.cliente.comuna,
-            monto=self.monto,
-            incluye_iva=self.incluye_iva,
-            estado='pendiente',
-            fecha=self.creado_en.date(),
-        )
 
 
 class ItemCotizacion(models.Model):
