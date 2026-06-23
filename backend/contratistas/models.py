@@ -67,9 +67,11 @@ class Cotizacion(models.Model):
             usuario=self.usuario,
             cliente=self.cliente.nombre,
             cliente_email=self.cliente.email,
+            cliente_rut=self.cliente.rut,
             descripcion=self.descripcion,
             comuna=self.cliente.comuna,
             monto=self.monto,
+            incluye_iva=self.incluye_iva,
             estado='pendiente',
             fecha=self.creado_en.date(),
         )
@@ -100,7 +102,7 @@ class Trabajo(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trabajos')
     cliente = models.CharField(max_length=100)
     cliente_email = models.EmailField(blank=True)
-    rut_cliente = models.CharField(max_length=12, blank=True)
+    cliente_rut = models.CharField(max_length=12, blank=True)
     descripcion = models.CharField(max_length=200)
     comuna = models.CharField(max_length=100)
     monto = models.IntegerField(default=0)
