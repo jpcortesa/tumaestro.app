@@ -11,56 +11,12 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='contratista',
-            name='oficios',
-            field=models.JSONField(blank=True, default=list),
-        ),
-        migrations.AddField(
-            model_name='contratista',
-            name='rut',
-            field=models.CharField(blank=True, max_length=12, null=True, unique=True),
-        ),
-        migrations.AddField(
-            model_name='contratista',
-            name='descripcion',
-            field=models.TextField(blank=True),
-        ),
-        migrations.AddField(
-            model_name='contratista',
-            name='certificacion',
-            field=models.TextField(blank=True),
-        ),
-        migrations.AddField(
-            model_name='contratista',
-            name='comuna',
-            field=models.CharField(blank=True, max_length=100),
-        ),
-        migrations.AddField(
-            model_name='contratista',
-            name='comunas',
-            field=models.JSONField(blank=True, default=list),
-        ),
-        migrations.AddField(
-            model_name='contratista',
-            name='experiencia',
-            field=models.IntegerField(default=0),
-        ),
-        migrations.AddField(
-            model_name='contratista',
-            name='email_verificado',
-            field=models.BooleanField(default=False),
-        ),
-        migrations.AddField(
-            model_name='contratista',
-            name='verificado',
-            field=models.BooleanField(default=False),
-        ),
         migrations.CreateModel(
             name='Cliente',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('nombre', models.CharField(max_length=100)),
+                ('rut', models.CharField(blank=True, max_length=12)),
                 ('telefono', models.CharField(blank=True, max_length=20)),
                 ('email', models.EmailField(blank=True, max_length=254)),
                 ('direccion', models.CharField(blank=True, max_length=200)),
@@ -90,6 +46,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('cliente', models.CharField(max_length=100)),
                 ('cliente_email', models.EmailField(blank=True, max_length=254)),
+                ('cliente_rut', models.CharField(blank=True, max_length=12)),
                 ('descripcion', models.CharField(max_length=200)),
                 ('comuna', models.CharField(max_length=100)),
                 ('monto', models.IntegerField(default=0)),
@@ -108,6 +65,7 @@ class Migration(migrations.Migration):
                 ('nombre_cliente', models.CharField(max_length=100)),
                 ('telefono_cliente', models.CharField(max_length=20)),
                 ('email_cliente', models.EmailField(blank=True, max_length=254)),
+                ('rut_cliente', models.CharField(blank=True, max_length=12)),
                 ('descripcion', models.TextField()),
                 ('leida', models.BooleanField(default=False)),
                 ('descartada', models.BooleanField(default=False)),
