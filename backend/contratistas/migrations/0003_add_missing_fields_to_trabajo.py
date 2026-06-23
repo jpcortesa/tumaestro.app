@@ -1,4 +1,4 @@
-from django.db import migrations
+from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
@@ -7,4 +7,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.AddField(
+            model_name='trabajo',
+            name='cliente_rut',
+            field=models.CharField(blank=True, max_length=12),
+        ),
     ]
