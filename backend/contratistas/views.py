@@ -9,7 +9,7 @@ from django.contrib.auth.models import User
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import Contratista, Trabajo, Cliente, Cotizacion, ItemCotizacion, SolicitudCotizacion, Resena, PasswordResetToken, EmailVerificationToken
-from .serializers import ContratistaSerializer, TrabajoSerializer, ClienteSerializer, CotizacionSerializer, ItemCotizacionSerializer
+from .serializers import ContratistaSerializer, TrabajoSerializer, ClienteSerializer, CotizacionSerializer, ItemCotizacionSerializer, SolicitudCotizacionSerializer
 
 resend.api_key = os.environ.get('RESEND_API_KEY', '')
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://tumaestro.app')
@@ -579,6 +579,7 @@ def solicitud_cotizacion(request, pk):
     nombre = request.data.get('nombre_cliente', '')
     telefono = request.data.get('telefono_cliente', '')
     email = request.data.get('email_cliente', '')
+    rut = request.data.get('rut_cliente', '')
     descripcion = request.data.get('descripcion', '')
 
     if not nombre or not telefono or not descripcion:
@@ -589,6 +590,7 @@ def solicitud_cotizacion(request, pk):
         nombre_cliente=nombre,
         telefono_cliente=telefono,
         email_cliente=email,
+        rut_cliente=rut,
         descripcion=descripcion
     )
 
@@ -613,6 +615,7 @@ def mis_solicitudes(request):
         'nombre_cliente': s.nombre_cliente,
         'telefono_cliente': s.telefono_cliente,
         'email_cliente': s.email_cliente,
+        'rut_cliente': s.rut_cliente,
         'descripcion': s.descripcion,
         'leida': s.leida,
         'descartada': s.descartada,

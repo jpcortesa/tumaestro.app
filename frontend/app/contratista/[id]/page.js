@@ -30,9 +30,43 @@ function validarEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
 
+function validarRUT(rut) {
+  if (!rut || rut.trim() === '') return { valido: false, error: 'RUT es obligatorio' }
+  
+  // Limpiar formato
+  const rutLimpio = rut.toUpperCase().replace(/[^0-9K]/g, '')
+  if (rutLimpio.length < 8) return { valido: false, error: 'RUT inválido' }
+  
+  const numero = rutLimpio.slice(0, -1)
+  const dv = rutLimpio.slice(-1)
+  
+  // Calcular dígito verificador
+  let suma = 0
+  let multiplicador = 2
+  for (let i = numero.length - 1; i >= 0; i--) {
+    suma += parseInt(numero[i]) * multiplicador
+    multiplicador++
+    if (multiplicador > 7) multiplicador = 2
+  }
+  
+  const resto = suma % 11
+  const dvEsperado = resto === 0 ? '0' : resto === 1 ? 'K' : String(11 - resto)
+  
+  if (dv !== dvEsperado) {
+    return { valido: false, error: 'RUT inválido' }
+  }
+  
+  return { valido: true }
+}
+
 function ErrorMsg({ msg }) {
   if (!msg) return null
   return <p style={{ fontSize: '11px', color: '#EF4444', margin: '3px 0 0' }}>{msg}</p>
+}
+
+function SuccessMsg({ msg }) {
+  if (!msg) return null
+  return <p style={{ fontSize: '11px', color: '#059669', margin: '3px 0 0' }}>✓ {msg}</p>
 }
 
 export default function PerfilContratista() {
@@ -43,9 +77,10 @@ export default function PerfilContratista() {
 
   const [form, setForm] = useState({
     nombre_cliente: '',
-    telefono_cliente: '',
+    telefono_cliente: '+56 ',
     email_cliente: '',
     email_confirmar: '',
+    rut_cliente: '',
     descripcion: '',
   })
   const [errores, setErrores] = useState({})
@@ -74,10 +109,13 @@ export default function PerfilContratista() {
   function validar() {
     const e = {}
     if (!form.nombre_cliente.trim()) e.nombre_cliente = 'Tu nombre es requerido'
-    if (!form.telefono_cliente.trim()) {
+    if (!form.telefono_cliente.trim() || form.telefono_cliente === '+56 ') {
       e.telefono_cliente = 'Tu teléfono es requerido'
-    } else if (!validarTelefono(form.telefono_cliente)) {
-      e.telefono_cliente = 'Debe ser un número chileno válido: 9 XXXX XXXX'
+    } else {
+      const soloNumeros = form.telefono_cliente.replace(/\D/g, '')
+      if (soloNumeros.length !== 11 || !soloNumeros.startsWith('56')) {
+        e.telefono_cliente = 'Debe ser un número chileno válido: +56 9 XXXX XXXX'
+      }
     }
     if (!form.email_cliente.trim()) {
       e.email_cliente = 'Tu email es requerido'
@@ -88,6 +126,10 @@ export default function PerfilContratista() {
       e.email_confirmar = 'Confirma tu email'
     } else if (form.email_cliente !== form.email_confirmar) {
       e.email_confirmar = 'Los emails no coinciden'
+    }
+    const validRut = validarRUT(form.rut_cliente)
+    if (!validRut.valido) {
+      e.rut_cliente = validRut.error
     }
     if (!form.descripcion.trim()) e.descripcion = 'Describe el trabajo que necesitas'
     return e
@@ -103,8 +145,9 @@ export default function PerfilContratista() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         nombre_cliente: form.nombre_cliente,
-        telefono_cliente: `+56 ${form.telefono_cliente.trim()}`,
+        telefono_cliente: form.telefono_cliente,
         email_cliente: form.email_cliente,
+        rut_cliente: form.rut_cliente,
         descripcion: form.descripcion,
       })
     })
@@ -113,7 +156,7 @@ export default function PerfilContratista() {
   }
 
   const resetForm = () => {
-    setForm({ nombre_cliente: '', telefono_cliente: '', email_cliente: '', email_confirmar: '', descripcion: '' })
+    setForm({ nombre_cliente: '', telefono_cliente: '+56 ', email_cliente: '', email_confirmar: '', rut_cliente: '', descripcion: '' })
     setErrores({})
     setEnviado(false)
   }
@@ -274,21 +317,15 @@ export default function PerfilContratista() {
 
                     {/* TELÉFONO */}
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${errores.telefono_cliente ? '#EF4444' : '#E5E7EB'}`, borderRadius: '8px', overflow: 'hidden' }}>
-                        <div style={{ padding: '11px 10px', background: '#F3F4F6', borderRight: '1px solid #E5E7EB', fontSize: '14px', color: '#374151', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                          +56
-                        </div>
-                        <input
-                          placeholder="9 1234 5678 *"
-                          value={form.telefono_cliente}
-                          onChange={e => actualizar('telefono_cliente', e.target.value.replace(/[^\d\s]/g, ''))}
-                          maxLength={11}
-                          style={{ flex: 1, border: 'none', outline: 'none', padding: '11px 12px', fontSize: '14px', background: 'transparent' }}
-                        />
-                      </div>
+                      <input
+                        placeholder="+56 9 1234 5678 *"
+                        value={form.telefono_cliente}
+                        onChange={e => actualizar('telefono_cliente', e.target.value)}
+                        style={{ ...inputBase, borderColor: errores.telefono_cliente ? '#EF4444' : '#E5E7EB' }}
+                      />
                       <ErrorMsg msg={errores.telefono_cliente} />
-                      {!errores.telefono_cliente && form.telefono_cliente && validarTelefono(form.telefono_cliente) && (
-                        <p style={{ fontSize: '11px', color: '#059669', margin: '3px 0 0' }}>✓ Número válido</p>
+                      {!errores.telefono_cliente && form.telefono_cliente && form.telefono_cliente.replace(/[^\d]/g, '').length === 11 && validarTelefono(form.telefono_cliente.replace('+56 ', '')) && (
+                        <SuccessMsg msg="Número válido" />
                       )}
                     </div>
 
@@ -315,7 +352,21 @@ export default function PerfilContratista() {
                       />
                       <ErrorMsg msg={errores.email_confirmar} />
                       {!errores.email_confirmar && form.email_confirmar && form.email_cliente === form.email_confirmar && (
-                        <p style={{ fontSize: '11px', color: '#059669', margin: '3px 0 0' }}>✓ Los emails coinciden</p>
+                        <SuccessMsg msg="Los emails coinciden" />
+                      )}
+                    </div>
+
+                    {/* RUT */}
+                    <div>
+                      <input
+                        placeholder="Tu RUT (ej: 12.345.678-9) *"
+                        value={form.rut_cliente}
+                        onChange={e => actualizar('rut_cliente', e.target.value)}
+                        style={{ ...inputBase, borderColor: errores.rut_cliente ? '#EF4444' : (form.rut_cliente && validarRUT(form.rut_cliente).valido) ? '#059669' : '#E5E7EB' }}
+                      />
+                      <ErrorMsg msg={errores.rut_cliente} />
+                      {!errores.rut_cliente && form.rut_cliente && validarRUT(form.rut_cliente).valido && (
+                        <SuccessMsg msg="RUT válido" />
                       )}
                     </div>
 

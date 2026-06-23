@@ -26,6 +26,7 @@ class Contratista(models.Model):
 class Cliente(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
     nombre = models.CharField(max_length=100)
+    rut = models.CharField(max_length=12, blank=True)
     telefono = models.CharField(max_length=20, blank=True)
     email = models.EmailField(blank=True)
     direccion = models.CharField(max_length=200, blank=True)
@@ -46,6 +47,8 @@ class Cotizacion(models.Model):
 
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
+    cliente_nombre = models.CharField(max_length=100, blank=True)
+    cliente_rut = models.CharField(max_length=12, blank=True)
     descripcion = models.CharField(max_length=200)
     detalle = models.TextField(blank=True)
     monto = models.IntegerField(default=0)
@@ -97,6 +100,7 @@ class Trabajo(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trabajos')
     cliente = models.CharField(max_length=100)
     cliente_email = models.EmailField(blank=True)
+    rut_cliente = models.CharField(max_length=12, blank=True)
     descripcion = models.CharField(max_length=200)
     comuna = models.CharField(max_length=100)
     monto = models.IntegerField(default=0)
@@ -113,6 +117,7 @@ class Trabajo(models.Model):
 class SolicitudCotizacion(models.Model):
     contratista = models.ForeignKey(Contratista, on_delete=models.CASCADE, related_name='solicitudes')
     nombre_cliente = models.CharField(max_length=100)
+    rut_cliente = models.CharField(max_length=12, blank=True)
     telefono_cliente = models.CharField(max_length=20)
     email_cliente = models.EmailField(blank=True)
     descripcion = models.TextField()

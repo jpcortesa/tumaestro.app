@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Contratista, Trabajo, Cliente, Cotizacion, ItemCotizacion
+from .models import Contratista, Trabajo, Cliente, Cotizacion, ItemCotizacion, SolicitudCotizacion
 
 class ContratistaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -30,3 +30,9 @@ class CotizacionSerializer(serializers.ModelSerializer):
         model = Cotizacion
         fields = '__all__'
         read_only_fields = ['usuario', 'creado_en', 'token']
+
+class SolicitudCotizacionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SolicitudCotizacion
+        fields = ['id', 'nombre_cliente', 'telefono_cliente', 'email_cliente', 'rut_cliente', 'descripcion', 'leida', 'descartada', 'creado_en']
+        read_only_fields = ['id', 'creado_en']

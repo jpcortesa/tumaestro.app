@@ -38,6 +38,71 @@ const TIPOS_IMPUESTO = [
 const TODAS_COMUNAS = 'Todas las comunas de Santiago'
 const MAX_OFICIOS = 3
 
+// ── Funciones de validación ──
+function validarRUT(rut) {
+  if (!rut || rut.trim() === '') return { valido: false, error: 'RUT es obligatorio' }
+  
+  // Limpiar formato
+  const rutLimpio = rut.toUpperCase().replace(/[^0-9K]/g, '')
+  if (rutLimpio.length < 8) return { valido: false, error: 'RUT debe tener al menos 8 caracteres' }
+  
+  const numero = rutLimpio.slice(0, -1)
+  const dv = rutLimpio.slice(-1)
+  
+  // Calcular dígito verificador
+  let suma = 0
+  let multiplicador = 2
+  for (let i = numero.length - 1; i >= 0; i--) {
+    suma += parseInt(numero[i]) * multiplicador
+    multiplicador++
+    if (multiplicador > 7) multiplicador = 2
+  }
+  
+  const resto = suma % 11
+  const dvEsperado = resto === 0 ? '0' : resto === 1 ? 'K' : String(11 - resto)
+  
+  if (dv !== dvEsperado) {
+    return { valido: false, error: '✗ RUT inválido' }
+  }
+  
+  return { valido: true }
+}
+
+function validarEmail(email) {
+  if (!email || email.trim() === '') return { valido: false, error: 'Email es obligatorio' }
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!regex.test(email)) return { valido: false, error: 'Email inválido' }
+  return { valido: true }
+}
+
+function validarTelefono(telefono) {
+  if (!telefono || telefono.trim() === '') return { valido: false, error: 'Teléfono es obligatorio' }
+  const soloNumeros = telefono.replace(/\D/g, '')
+  if (soloNumeros.length < 9) return { valido: false, error: 'Teléfono debe tener al menos 9 dígitos' }
+  return { valido: true }
+}
+
+function validarCliente(form) {
+  if (!form.nombre || form.nombre.trim() === '') return { valido: false, error: 'Nombre es obligatorio' }
+  if (form.nombre.length < 3) return { valido: false, error: 'Nombre debe tener al menos 3 caracteres' }
+  
+  const validTel = validarTelefono(form.telefono)
+  if (!validTel.valido) return validTel
+  
+  const validEmail = validarEmail(form.email)
+  if (!validEmail.valido) return validEmail
+  
+  if (!form.comuna || form.comuna === '') return { valido: false, error: 'Comuna es obligatoria' }
+  
+  if (!form.direccion || form.direccion.trim() === '') return { valido: false, error: 'Dirección es obligatoria' }
+  if (form.direccion.length < 5) return { valido: false, error: 'Dirección debe tener al menos 5 caracteres' }
+  
+  const validRut = validarRUT(form.rut)
+  if (!validRut.valido) return validRut
+  
+  return { valido: true }
+}
+
 export default function Panel() {
   const [autorizado, setAutorizado] = useState(false)
   const [usuario, setUsuario] = useState({ nombre: '', email: '' })
@@ -49,8 +114,10 @@ export default function Panel() {
 
   const [clientesReal, setClientesReal] = useState([])
   const [showModalCliente, setShowModalCliente] = useState(false)
-  const [formCliente, setFormCliente] = useState({ nombre: '', telefono: '', email: '', direccion: '', comuna: '' })
+  const [formCliente, setFormCliente] = useState({ nombre: '', telefono: '', email: '', direccion: '', comuna: '', rut: '' })
   const [clienteEditando, setClienteEditando] = useState(null)
+  const [erroresCliente, setErroresCliente] = useState(null)
+  const [clienteDesdesSolicitud, setClienteDesdesSolicitud] = useState(false)
 
   const [showModalCotizacion, setShowModalCotizacion] = useState(false)
   const [formCotizacion, setFormCotizacion] = useState({ cliente: '', descripcion: '', detalle: '', incluye_iva: false, tipo_impuesto: 'ninguno' })
@@ -124,27 +191,54 @@ export default function Panel() {
   }
 
   async function crearCliente() {
+    const validacion = validarCliente(formCliente)
+    if (!validacion.valido) {
+      setErroresCliente(validacion.error)
+      return
+    }
+    setErroresCliente(null)
+    
     const res = await fetch(`${API}/api/clientes/`, { method: 'POST', headers: headers(), body: JSON.stringify(formCliente) })
     if (res.ok) {
       setShowModalCliente(false); setClienteEditando(null)
-      setFormCliente({ nombre: '', telefono: '', email: '', direccion: '', comuna: '' })
+      setFormCliente({ nombre: '', telefono: '', email: '', direccion: '', comuna: '', rut: '' })
+      setErroresCliente(null)
       fetchClientes()
+    } else {
+      const data = await res.json()
+      setErroresCliente(data.detail || data.error || 'Error al guardar cliente')
     }
   }
 
   async function editarCliente() {
+    const validacion = validarCliente(formCliente)
+    if (!validacion.valido) {
+      setErroresCliente(validacion.error)
+      return
+    }
+    setErroresCliente(null)
+    
     const res = await fetch(`${API}/api/clientes/${clienteEditando}/`, { method: 'PATCH', headers: headers(), body: JSON.stringify(formCliente) })
-    if (res.ok) { setShowModalCliente(false); setClienteEditando(null); setFormCliente({ nombre: '', telefono: '', email: '', direccion: '', comuna: '' }); fetchClientes() }
+    if (res.ok) { 
+      setShowModalCliente(false); setClienteEditando(null); 
+      setFormCliente({ nombre: '', telefono: '', email: '', direccion: '', comuna: '', rut: '' })
+      setErroresCliente(null)
+      fetchClientes() 
+    } else {
+      const data = await res.json()
+      setErroresCliente(data.detail || data.error || 'Error al actualizar cliente')
+    }
   }
 
   function abrirEditarCliente(c) {
-    setFormCliente({ nombre: c.nombre, telefono: c.telefono, email: c.email, direccion: c.direccion, comuna: c.comuna })
-    setClienteEditando(c.id); setShowModalCliente(true)
+    setFormCliente({ nombre: c.nombre, telefono: c.telefono, email: c.email, direccion: c.direccion, comuna: c.comuna, rut: c.rut || '' })
+    setClienteEditando(c.id); setShowModalCliente(true); setErroresCliente(null); setClienteDesdesSolicitud(false)
   }
 
   function crearClienteDesdeSolicitud(s) {
-    setFormCliente({ nombre: s.nombre_cliente, telefono: s.telefono_cliente, email: s.email_cliente || '', direccion: '', comuna: '' })
-    setClienteEditando(null); setShowModalCliente(true)
+    const telefonoConPrefijo = s.telefono_cliente && !s.telefono_cliente.startsWith('+56') ? '+56 ' + s.telefono_cliente : s.telefono_cliente || '+56 '
+    setFormCliente({ nombre: s.nombre_cliente, telefono: telefonoConPrefijo, email: s.email_cliente || '', direccion: '', comuna: '', rut: s.rut_cliente || '' })
+    setClienteEditando(null); setShowModalCliente(true); setErroresCliente(null); setClienteDesdesSolicitud(true)
     if (!s.leida) marcarLeida(s.id)
   }
 
@@ -446,23 +540,34 @@ export default function Panel() {
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
             <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '480px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <h2 style={{ fontWeight: 700, color: '#1B3A6B', margin: 0 }}>{clienteEditando ? 'Editar Cliente' : 'Nuevo Cliente'}</h2>
-              {!clienteEditando && formCliente.nombre && (
+              {!clienteEditando && (
+                <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '12px 14px', fontSize: '13px', color: '#166534', lineHeight: '1.5' }}>
+                  💡 Los datos del cliente son fundamentales para que reciba correctamente las cotizaciones por correo. Asegúrate de que el nombre, email, teléfono y RUT sean exactos y estén actualizados.
+                </div>
+              )}
+              {clienteDesdesSolicitud && (
                 <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#92400E' }}>
                   📩 Datos pre-llenados desde la solicitud — completa dirección y comuna
                 </div>
               )}
-              <div><label style={labelStyle}>Nombre</label><input type="text" value={formCliente.nombre} onChange={e => setFormCliente({ ...formCliente, nombre: e.target.value })} style={inputStyle} /></div>
-              <div><label style={labelStyle}>Teléfono</label><input type="text" value={formCliente.telefono} onChange={e => setFormCliente({ ...formCliente, telefono: e.target.value })} style={inputStyle} /></div>
-              <div><label style={labelStyle}>Email</label><input type="email" value={formCliente.email} onChange={e => setFormCliente({ ...formCliente, email: e.target.value })} style={inputStyle} /></div>
-              <div><label style={labelStyle}>Comuna</label>
+              {erroresCliente && (
+                <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#991B1B' }}>
+                  {erroresCliente}
+                </div>
+              )}
+              <div><label style={labelStyle}>Nombre completo<span style={{ color: '#EF4444' }}>*</span></label><input type="text" value={formCliente.nombre} onChange={e => setFormCliente({ ...formCliente, nombre: e.target.value })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>Teléfono <span style={{ color: '#EF4444' }}>*</span></label><input type="text" value={formCliente.telefono} onChange={e => setFormCliente({ ...formCliente, telefono: e.target.value })} style={inputStyle} placeholder="+56 9 1234 5678" /></div>
+              <div><label style={labelStyle}>Email <span style={{ color: '#EF4444' }}>*</span></label><input type="email" value={formCliente.email} onChange={e => setFormCliente({ ...formCliente, email: e.target.value })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>Comuna <span style={{ color: '#EF4444' }}>*</span></label>
                 <select value={formCliente.comuna} onChange={e => setFormCliente({ ...formCliente, comuna: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
                   <option value="">Selecciona una comuna</option>
                   {comunas.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <div><label style={labelStyle}>Dirección</label><input type="text" value={formCliente.direccion} onChange={e => setFormCliente({ ...formCliente, direccion: e.target.value })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>Dirección <span style={{ color: '#EF4444' }}>*</span></label><input type="text" value={formCliente.direccion} onChange={e => setFormCliente({ ...formCliente, direccion: e.target.value })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>RUT <span style={{ color: '#EF4444' }}>*</span></label><input type="text" value={formCliente.rut} onChange={e => setFormCliente({ ...formCliente, rut: e.target.value })} style={inputStyle} placeholder="12.345.678-9" /></div>
               <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                <button onClick={() => { setShowModalCliente(false); setClienteEditando(null); setFormCliente({ nombre: '', telefono: '', email: '', direccion: '', comuna: '' }) }}
+                <button onClick={() => { setShowModalCliente(false); setClienteEditando(null); setFormCliente({ nombre: '', telefono: '', email: '', direccion: '', comuna: '', rut: '' }); setErroresCliente(null); setClienteDesdesSolicitud(false) }}
                   style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>Cancelar</button>
                 <button onClick={clienteEditando ? editarCliente : crearCliente}
                   style={{ flex: 1, padding: '10px', background: '#F97316', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
@@ -591,6 +696,7 @@ export default function Panel() {
                           {!s.leida && <span style={{ fontSize: '11px', color: '#F97316', fontWeight: 600 }}>● Nueva</span>}
                         </div>
                         <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 4px' }}>📞 {s.telefono_cliente}</p>
+                        {s.rut_cliente && <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 4px' }}>🆔 RUT: {s.rut_cliente}</p>}
                         {s.email_cliente && <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 4px' }}>✉️ {s.email_cliente}</p>}
                         <p style={{ fontSize: '13px', color: '#374151', margin: 0 }}>{s.descripcion.slice(0, 80)}{s.descripcion.length > 80 ? '...' : ''}</p>
                       </div>
@@ -635,6 +741,7 @@ export default function Panel() {
                         {s.descartada && <span style={{ background: '#F3F4F6', color: '#9CA3AF', fontSize: '11px', fontWeight: 600, borderRadius: '999px', padding: '2px 8px' }}>Descartada</span>}
                       </div>
                       <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 4px' }}>📞 {s.telefono_cliente}</p>
+                      {s.rut_cliente && <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 4px' }}>🆔 RUT: {s.rut_cliente}</p>}
                       {s.email_cliente && <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 8px' }}>✉️ {s.email_cliente}</p>}
                       <p style={{ fontSize: '14px', color: '#374151', lineHeight: '1.6', margin: '0 0 12px' }}>{s.descripcion}</p>
                       <p style={{ fontSize: '12px', color: '#9CA3AF', margin: 0 }}>
@@ -704,7 +811,7 @@ export default function Panel() {
         {seccion === 'clientes' && (
           <div style={{ padding: '32px' }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
-              <button onClick={() => { setClienteEditando(null); setFormCliente({ nombre: '', telefono: '', email: '', direccion: '', comuna: '' }); setShowModalCliente(true) }}
+              <button onClick={() => { setClienteEditando(null); setFormCliente({ nombre: '', telefono: '+56 ', email: '', direccion: '', comuna: '', rut: '' }); setShowModalCliente(true); setErroresCliente(null); setClienteDesdesSolicitud(false) }}
                 style={{ background: '#F97316', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
                 + Nuevo cliente
               </button>
@@ -713,19 +820,20 @@ export default function Panel() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#F9FAFB' }}>
-                    {['Nombre', 'Teléfono', 'Email', 'Comuna', 'Dirección', 'Acción'].map(h => (
+                    {['Nombre', 'Teléfono', 'Email', 'RUT', 'Comuna', 'Dirección', 'Acción'].map(h => (
                       <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', color: '#6B7280', fontWeight: 600, textTransform: 'uppercase' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {clientesReal.length === 0 ? (
-                    <tr><td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#6B7280' }}>No hay clientes aún</td></tr>
+                    <tr><td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: '#6B7280' }}>No hay clientes aún</td></tr>
                   ) : clientesReal.map(c => (
                     <tr key={c.id} style={{ borderTop: '1px solid #F3F4F6' }}>
                       <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: '14px' }}>{c.nombre}</td>
                       <td style={{ padding: '12px 16px', fontSize: '14px' }}>{c.telefono}</td>
                       <td style={{ padding: '12px 16px', fontSize: '14px', color: '#6B7280' }}>{c.email}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '14px' }}>{c.rut || '—'}</td>
                       <td style={{ padding: '12px 16px', fontSize: '14px' }}>{c.comuna}</td>
                       <td style={{ padding: '12px 16px', fontSize: '14px', color: '#6B7280' }}>{c.direccion}</td>
                       <td style={{ padding: '12px 16px' }}>
