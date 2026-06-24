@@ -4,11 +4,11 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('contratistas', '0003_add_missing_fields_to_trabajo'),
+        ('contratistas', '0004_add_cliente_rut_sql'),
     ]
 
     operations = [
-        migrations.AddField(
+        migrations.AlterField(
             model_name='trabajo',
             name='cliente_rut',
             field=models.CharField(blank=True, max_length=12, null=True),

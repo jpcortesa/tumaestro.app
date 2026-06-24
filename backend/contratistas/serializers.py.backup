@@ -9,10 +9,8 @@ class ContratistaSerializer(serializers.ModelSerializer):
 class TrabajoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Trabajo
-        fields = ['id', 'usuario', 'cliente', 'cliente_email', 'cliente_rut', 
-                  'descripcion', 'comuna', 'monto', 'incluye_iva', 'estado', 
-                  'fecha', 'creado_en', 'token_resena']
-        read_only_fields = ['id', 'usuario', 'fecha', 'creado_en', 'token_resena']
+        fields = '__all__'
+        read_only_fields = ['usuario', 'creado_en']
 
 class ClienteSerializer(serializers.ModelSerializer):
     class Meta:
