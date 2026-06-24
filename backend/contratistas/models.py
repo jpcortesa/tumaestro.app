@@ -69,28 +69,17 @@ class Cotizacion(models.Model):
         ).exists():
             try:
                 print(f"[TRABAJO] Creando trabajo para cotización {self.id}...")
-                
-                # Preparar datos del trabajo
-                trabajo_data = {
-                    'usuario': self.usuario,
-                    'cliente': self.cliente.nombre,
-                    'cliente_email': self.cliente.email,
-                    'descripcion': self.descripcion,
-                    'comuna': self.cliente.comuna,
-                    'monto': self.monto,
-                    'incluye_iva': self.incluye_iva,
-                    'estado': 'pendiente',
-                    'fecha': self.creado_en.date(),
-                }
-                
-                # Solo agregar cliente_rut si tiene valor
-                if self.cliente.rut:
-                    print(f"[TRABAJO] Cliente RUT: {self.cliente.rut}")
-                    trabajo_data['cliente_rut'] = self.cliente.rut
-                else:
-                    print(f"[TRABAJO] Cliente RUT: (vacío)")
-                
-                Trabajo.objects.create(**trabajo_data)
+                Trabajo.objects.create(
+                    usuario=self.usuario,
+                    cliente=self.cliente.nombre,
+                    cliente_email=self.cliente.email,
+                    descripcion=self.descripcion,
+                    comuna=self.cliente.comuna,
+                    monto=self.monto,
+                    incluye_iva=self.incluye_iva,
+                    estado='pendiente',
+                    fecha=self.creado_en.date(),
+                )
                 print(f"[TRABAJO] ✓ Trabajo creado exitosamente")
             except Exception as e:
                 print(f"[ERROR TRABAJO] {type(e).__name__}: {str(e)}")
