@@ -69,11 +69,12 @@ class Cotizacion(models.Model):
         ).exists():
             try:
                 print(f"[TRABAJO] Creando trabajo para cotización {self.id}...")
-                # NO pasar cliente_rut - dejar que la BD use el DEFAULT ('')
+                # Pasar cliente_rut='' explícitamente para evitar NOT NULL constraint
                 Trabajo.objects.create(
                     usuario=self.usuario,
                     cliente=self.cliente.nombre,
                     cliente_email=self.cliente.email,
+                    cliente_rut='',  # Cadena vacía explícita
                     descripcion=self.descripcion,
                     comuna=self.cliente.comuna,
                     monto=self.monto,
