@@ -1,6 +1,11 @@
 import uuid
+import os
+import resend
 from django.db import models
 from django.contrib.auth.models import User
+
+resend.api_key = os.environ.get('RESEND_API_KEY', '')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://tumaestro.app')
 
 
 class Contratista(models.Model):
@@ -153,8 +158,41 @@ class Trabajo(models.Model):
     def __str__(self):
         return f"{self.cliente} - {self.descripcion}"
     
+    def _enviar_email_trabajo_iniciado(self):
+        """Envía email cuando trabajo pasa a en_progreso"""
+        if not self.cliente_email:
+            return
+        try:
+            contratista_nombre = f'{self.usuario.first_name} {self.usuario.last_name}'.strip()
+            resend.Emails.send({
+                "from": "tumaestro.app <noreply@tumaestro.app>",
+                "to": self.cliente_email,
+                "subject": "🔨 ¡Tu trabajo está en camino! - tumaestro.app",
+                "html": f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+                    <h2 style="color: #1B3A6B;">¡Trabajo iniciado!</h2>
+                    <p>Hola <strong>{self.cliente}</strong>,</p>
+                    <p><strong>{contratista_nombre}</strong> ha comenzado el trabajo. Nos contactaremos contigo con actualizaciones.</p>
+                    <div style="background: #F8F9FA; border-radius: 8px; padding: 16px; margin: 16px 0; border-left: 4px solid #059669;">
+                        <p style="margin: 4px 0;"><strong>Trabajo:</strong> {self.descripcion}</p>
+                        <p style="margin: 4px 0;"><strong>Contratista:</strong> {contratista_nombre}</p>
+                    </div>
+                    <p style="color: #6B7280; font-size: 14px;">
+                        En breve recibirás actualizaciones sobre el progreso del trabajo.
+                    </p>
+                    <p style="color: #9CA3AF; font-size: 12px; margin-top: 32px; border-top: 1px solid #E5E7EB; padding-top: 16px;">
+                        tumaestro.app — La plataforma para contratistas independientes en Chile
+                    </p>
+                </div>
+                """
+            })
+            print(f"[EMAIL ✓] Notificación enviada: {self.cliente_email}")
+        except Exception as e:
+            print(f"[EMAIL ❌] Error enviando email: {e}")
+    
     def save(self, *args, **kwargs):
         # Validar flujo de estados SOLO si es update (tiene pk)
+        estado_cambio = None
         if self.pk:
             trabajo_db = Trabajo.objects.get(pk=self.pk)
             estado_anterior = trabajo_db.estado
@@ -175,8 +213,19 @@ class Trabajo(models.Model):
                     raise ValueError(mensaje)
                 else:
                     print(f"[FLUJO OK] {estado_anterior} → {estado_nuevo}")
+                    # Guardar el cambio de estado para disparar eventos después
+                    estado_cambio = (estado_anterior, estado_nuevo)
         
         super().save(*args, **kwargs)
+        
+        # Disparar emails según transición de estado
+        if estado_cambio:
+            estado_anterior, estado_nuevo = estado_cambio
+            
+            # 🔨 Cuando pasa de pendiente a en_progreso, enviar email "¡Tu trabajo está en camino!"
+            if estado_anterior == 'pendiente' and estado_nuevo == 'en_progreso':
+                print(f"[FLUJO] Disparando email: {estado_anterior} → {estado_nuevo}")
+                self._enviar_email_trabajo_iniciado()
 
 
 class SolicitudCotizacion(models.Model):
