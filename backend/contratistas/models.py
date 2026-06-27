@@ -61,36 +61,62 @@ class Cotizacion(models.Model):
         return f"Cotización {self.id} - {self.cliente.nombre}"
 
     def save(self, *args, **kwargs):
-        # Si cambia a aprobada y no hay trabajo, crear uno
-        if self.estado == 'aprobada' and not Trabajo.objects.filter(
-            usuario=self.usuario,
-            cliente=self.cliente.nombre,
-            descripcion=self.descripcion
-        ).exists():
-            try:
-                print(f"[TRABAJO] Creando trabajo para cotización {self.id}...")
-                Trabajo.objects.create(
-                    usuario=self.usuario,
-                    cliente=self.cliente.nombre,
-                    cliente_email=self.cliente.email,
-                    cliente_rut=self.cliente.rut or '',  # RUT si existe, sino ''
-                    descripcion=self.descripcion,
-                    comuna=self.cliente.comuna,
-                    monto=self.monto,
-                    incluye_iva=self.incluye_iva,
-                    estado='pendiente',
-                    fecha=self.creado_en.date(),
-                )
-                print(f"[TRABAJO] ✓ Trabajo creado exitosamente")
-            except Exception as e:
-                print(f"[ERROR TRABAJO] {type(e).__name__}: {str(e)}")
-                import traceback
-                traceback.print_exc()
+        """
+        Cuando se aprueba una cotización, crea automáticamente un Trabajo.
+        Asegura que cliente_rut se pase siempre, aunque sea None.
+        """
+        # Si cambia a aprobada y no hay trabajo duplicado
+        if self.estado == 'aprobada':
+            trabajo_existe = Trabajo.objects.filter(
+                usuario=self.usuario,
+                cliente=self.cliente.nombre,
+                descripcion=self.descripcion
+            ).exists()
+            
+            if not trabajo_existe:
+                try:
+                    print(f"\n[TRABAJO] Creando trabajo para cotización {self.id}...")
+                    
+                    # Preparar datos del cliente
+                    cliente_rut_value = self.cliente.rut if self.cliente.rut else None
+                    cliente_email_value = self.cliente.email if self.cliente.email else ''
+                    cliente_comuna_value = self.cliente.comuna if self.cliente.comuna else ''
+                    
+                    print(f"  - Cliente: {self.cliente.nombre}")
+                    print(f"  - RUT: {cliente_rut_value}")
+                    print(f"  - Email: {cliente_email_value}")
+                    print(f"  - Comuna: {cliente_comuna_value}")
+                    
+                    # Crear trabajo
+                    trabajo = Trabajo.objects.create(
+                        usuario=self.usuario,
+                        cliente=self.cliente.nombre,
+                        cliente_email=cliente_email_value,
+                        cliente_rut=cliente_rut_value,  # None si no existe, nunca ''
+                        descripcion=self.descripcion,
+                        comuna=cliente_comuna_value,
+                        monto=self.monto,
+                        incluye_iva=self.incluye_iva,
+                        estado='pendiente',
+                        fecha=self.creado_en.date(),
+                    )
+                    print(f"  ✓ Trabajo #{trabajo.id} creado exitosamente\n")
+                    
+                except Exception as e:
+                    print(f"\n[ERROR TRABAJO] {type(e).__name__}: {str(e)}")
+                    import traceback
+                    traceback.print_exc()
+                    # No lanzar excepción, solo logging (para que la cotización se guarde igual)
+        
+        # Guardar la cotización normalmente
         super().save(*args, **kwargs)
 
     def aprobar(self):
+        """
+        Método helper para aprobar una cotización desde el cliente.
+        """
         self.estado = 'aprobada'
-        self.save()
+        self.save()  # Dispara el save() que crea el Trabajo
 
 
 class ItemCotizacion(models.Model):
