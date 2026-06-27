@@ -2,6 +2,7 @@ import uuid
 from django.db import models
 from django.contrib.auth.models import User
 
+
 class Contratista(models.Model):
     usuario = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
     nombre = models.CharField(max_length=100)
@@ -61,11 +62,6 @@ class Cotizacion(models.Model):
         return f"Cotización {self.id} - {self.cliente.nombre}"
 
     def save(self, *args, **kwargs):
-        """
-        Cuando se aprueba una cotización, crea automáticamente un Trabajo.
-        Asegura que cliente_rut se pase siempre, aunque sea None.
-        """
-        # Si cambia a aprobada y no hay trabajo duplicado
         if self.estado == 'aprobada':
             trabajo_existe = Trabajo.objects.filter(
                 usuario=self.usuario,
@@ -77,7 +73,6 @@ class Cotizacion(models.Model):
                 try:
                     print(f"\n[TRABAJO] Creando trabajo para cotización {self.id}...")
                     
-                    # Preparar datos del cliente
                     cliente_rut_value = self.cliente.rut if self.cliente.rut else None
                     cliente_email_value = self.cliente.email if self.cliente.email else ''
                     cliente_comuna_value = self.cliente.comuna if self.cliente.comuna else ''
@@ -87,12 +82,11 @@ class Cotizacion(models.Model):
                     print(f"  - Email: {cliente_email_value}")
                     print(f"  - Comuna: {cliente_comuna_value}")
                     
-                    # Crear trabajo
                     trabajo = Trabajo.objects.create(
                         usuario=self.usuario,
                         cliente=self.cliente.nombre,
                         cliente_email=cliente_email_value,
-                        cliente_rut=cliente_rut_value,  # None si no existe, nunca ''
+                        cliente_rut=cliente_rut_value,
                         descripcion=self.descripcion,
                         comuna=cliente_comuna_value,
                         monto=self.monto,
@@ -106,17 +100,12 @@ class Cotizacion(models.Model):
                     print(f"\n[ERROR TRABAJO] {type(e).__name__}: {str(e)}")
                     import traceback
                     traceback.print_exc()
-                    # No lanzar excepción, solo logging (para que la cotización se guarde igual)
         
-        # Guardar la cotización normalmente
         super().save(*args, **kwargs)
 
     def aprobar(self):
-        """
-        Método helper para aprobar una cotización desde el cliente.
-        """
         self.estado = 'aprobada'
-        self.save()  # Dispara el save() que crea el Trabajo
+        self.save()
 
 
 class ItemCotizacion(models.Model):
@@ -140,6 +129,13 @@ class Trabajo(models.Model):
         ('completado', 'Completado'),
         ('cotizacion', 'Cotizacion'),
     ]
+    
+    TRANSICIONES_PERMITIDAS = {
+        'pendiente': ['en_progreso'],
+        'en_progreso': ['completado'],
+        'completado': [],
+        'cotizacion': ['pendiente', 'en_progreso'],
+    }
 
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trabajos')
     cliente = models.CharField(max_length=100)
@@ -156,6 +152,31 @@ class Trabajo(models.Model):
 
     def __str__(self):
         return f"{self.cliente} - {self.descripcion}"
+    
+    def save(self, *args, **kwargs):
+        # Validar flujo de estados SOLO si es update (tiene pk)
+        if self.pk:
+            trabajo_db = Trabajo.objects.get(pk=self.pk)
+            estado_anterior = trabajo_db.estado
+            estado_nuevo = self.estado
+            
+            # Si el estado cambió, validar
+            if estado_anterior != estado_nuevo:
+                transiciones_permitidas = self.TRANSICIONES_PERMITIDAS.get(estado_anterior, [])
+                
+                # Si el nuevo estado NO está en las transiciones permitidas, lanzar error
+                if estado_nuevo not in transiciones_permitidas:
+                    estado_anterior_label = dict(self.ESTADOS)[estado_anterior]
+                    estado_nuevo_label = dict(self.ESTADOS).get(estado_nuevo, estado_nuevo)
+                    transiciones_labels = ', '.join([dict(self.ESTADOS)[e] for e in transiciones_permitidas]) if transiciones_permitidas else 'ninguna (estado terminal)'
+                    
+                    mensaje = f"❌ No se puede cambiar de '{estado_anterior_label}' a '{estado_nuevo_label}'. " \
+                             f"Transiciones permitidas desde '{estado_anterior_label}': {transiciones_labels}"
+                    raise ValueError(mensaje)
+                else:
+                    print(f"[FLUJO OK] {estado_anterior} → {estado_nuevo}")
+        
+        super().save(*args, **kwargs)
 
 
 class SolicitudCotizacion(models.Model):
