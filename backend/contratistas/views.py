@@ -146,6 +146,68 @@ def enviar_email_trabajo_iniciado(cotizacion):
         print(f"Error enviando email trabajo iniciado: {e}")
 
 
+def enviar_email_cotizacion_aprobada_contratista(cotizacion):
+    """
+    Notifica al contratista que su cotización fue aprobada por el cliente.
+    Le pide que cambie el trabajo a 'en progreso' para informar al cliente.
+    """
+    if not cotizacion.usuario or not cotizacion.usuario.email:
+        return
+    
+    try:
+        contratista_nombre = f'{cotizacion.usuario.first_name} {cotizacion.usuario.last_name}'.strip()
+        cliente_nombre = cotizacion.cliente.nombre
+        monto_formateado = f"{cotizacion.monto:,}".replace(",", ".")
+        link_panel = f"{FRONTEND_URL}/panel"
+        
+        resend.Emails.send({
+            "from": "tumaestro.app <noreply@tumaestro.app>",
+            "to": cotizacion.usuario.email,
+            "subject": "✅ ¡Cotización aprobada! - tumaestro.app",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+                <h2 style="color: #059669;">¡Cotización aprobada!</h2>
+                <p>Hola <strong>{contratista_nombre}</strong>,</p>
+                <p><strong>{cliente_nombre}</strong> ha aprobado tu cotización. ¡Felicidades! 🎉</p>
+                
+                <div style="background: #ECFDF5; border-radius: 8px; padding: 16px; margin: 16px 0; border-left: 4px solid #059669;">
+                    <p style="margin: 4px 0;"><strong>Cliente:</strong> {cliente_nombre}</p>
+                    <p style="margin: 4px 0;"><strong>Descripción:</strong> {cotizacion.descripcion}</p>
+                    <p style="margin: 4px 0; font-size: 16px; font-weight: bold;"><strong>Monto:</strong> ${monto_formateado}</p>
+                </div>
+                
+                <div style="background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                    <p style="color: #92400E; font-weight: bold; margin-top: 0;">⚠️ Próximo paso:</p>
+                    <p style="color: #92400E; margin: 8px 0;">
+                        Para informarle al cliente que su trabajo ya está en camino, debes:
+                    </p>
+                    <ol style="color: #92400E; margin: 0; padding-left: 20px;">
+                        <li>Entra a tu panel de tumaestro.app</li>
+                        <li>Encuentra el trabajo en estado <strong>"Pendiente"</strong></li>
+                        <li>Cambia el estado a <strong>"En progreso"</strong></li>
+                        <li>El cliente recibirá automáticamente una notificación 🔨</li>
+                    </ol>
+                </div>
+                
+                <a href="{link_panel}" style="display: inline-block; background: #059669; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px; margin-top: 16px;">
+                    Ir a mi panel →
+                </a>
+                
+                <p style="color: #6B7280; font-size: 13px; margin-top: 24px;">
+                    Una vez que cambies el trabajo a "En progreso", el cliente recibirá la notificación 🔨 "¡Tu trabajo está en camino!"
+                </p>
+                
+                <p style="color: #9CA3AF; font-size: 12px; margin-top: 32px; border-top: 1px solid #E5E7EB; padding-top: 16px;">
+                    tumaestro.app — La plataforma para contratistas independientes en Chile
+                </p>
+            </div>
+            """
+        })
+        print(f"[EMAIL ✓] Notificación enviada al contratista: {cotizacion.usuario.email}")
+    except Exception as e:
+        print(f"[EMAIL ❌] Error enviando email al contratista: {e}")
+
+
 def enviar_email_trabajo_completado(trabajo):
     try:
         cliente_email = trabajo.cliente_email
@@ -709,8 +771,8 @@ def cotizacion_responder(request, token):
     try:
         if respuesta == 'aprobada':
             cotizacion.aprobar()
-            # Email de "Tu trabajo está en camino" se dispara ahora solo cuando
-            # el trabajo pasa de 'pendiente' a 'en_progreso' (en models.py)
+            # Notifica al contratista que debe cambiar el trabajo a 'en progreso'
+            enviar_email_cotizacion_aprobada_contratista(cotizacion)
         else:
             cotizacion.estado = 'rechazada'
             cotizacion.save()
