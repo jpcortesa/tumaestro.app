@@ -709,7 +709,8 @@ def cotizacion_responder(request, token):
     try:
         if respuesta == 'aprobada':
             cotizacion.aprobar()
-            enviar_email_trabajo_iniciado(cotizacion)
+            # Email de "Tu trabajo está en camino" se dispara ahora solo cuando
+            # el trabajo pasa de 'pendiente' a 'en_progreso' (en models.py)
         else:
             cotizacion.estado = 'rechazada'
             cotizacion.save()
