@@ -8,7 +8,7 @@ class ContratistaSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'usuario', 'nombre', 'oficio', 'oficios', 'telefono', 'rut',
             'descripcion', 'certificacion', 'comuna', 'comunas', 'experiencia',
-            'activo', 'email_verificado', 'verificado', 'creado_en'
+            'activo', 'email_verificado', 'verificado', 'foto_url', 'creado_en'
         ]
 
 

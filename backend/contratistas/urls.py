@@ -10,7 +10,7 @@ from .views import (
     solicitud_cotizacion, mis_solicitudes,
     marcar_solicitud_leida, descartar_solicitud,
     calificar_trabajo, resenas_contratista, mis_resenas,
-    ConfiguracionView, cambiar_password, eliminar_cuenta,
+    ConfiguracionView, cambiar_password, eliminar_cuenta, subir_foto_perfil,
     solicitar_reset_password, reset_password,
     verificar_email, reenviar_verificacion,
 )
@@ -41,6 +41,7 @@ urlpatterns = router.urls + [
     path('configuracion/', ConfiguracionView.as_view()),
     path('configuracion/cambiar-password/', cambiar_password),
     path('configuracion/eliminar-cuenta/', eliminar_cuenta),
+    path('configuracion/foto/', subir_foto_perfil),
     path('solicitar-reset-password/', solicitar_reset_password),
     path('reset-password/', reset_password),
     path('verificar-email/', verificar_email),

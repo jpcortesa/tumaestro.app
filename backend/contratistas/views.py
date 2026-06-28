@@ -989,6 +989,76 @@ def eliminar_cuenta(request):
     return Response({'mensaje': 'Cuenta eliminada permanentemente'})
 
 
+@api_view(['POST'])
+def subir_foto_perfil(request):
+    """
+    Endpoint para subir foto de perfil a Cloudinary
+    
+    Recibe: multipart/form-data con 'archivo' (imagen)
+    Retorna: { "foto_url": "https://..." }
+    """
+    if not request.user.is_authenticated:
+        return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    try:
+        contratista = Contratista.objects.get(usuario=request.user)
+    except Contratista.DoesNotExist:
+        return Response({'error': 'Contratista no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+    
+    if 'archivo' not in request.FILES:
+        return Response({'error': 'No se envió archivo'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    archivo = request.FILES['archivo']
+    
+    # Validar que sea imagen
+    if not archivo.content_type.startswith('image/'):
+        return Response({'error': 'El archivo debe ser una imagen'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Validar tamaño (máx 5MB)
+    if archivo.size > 5 * 1024 * 1024:
+        return Response({'error': 'La imagen debe ser menor a 5MB'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        import cloudinary
+        import cloudinary.uploader
+        
+        # Configurar Cloudinary
+        cloudinary.config(
+            cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
+            api_key=os.environ.get('CLOUDINARY_API_KEY'),
+            api_secret=os.environ.get('CLOUDINARY_API_SECRET'),
+        )
+        
+        # Subir a Cloudinary
+        resultado = cloudinary.uploader.upload(
+            archivo,
+            folder='tumaestro/fotos-perfil',
+            resource_type='auto',
+            transformation=[
+                {'width': 400, 'height': 400, 'crop': 'fill', 'gravity': 'face'},
+                {'quality': 'auto'},
+            ]
+        )
+        
+        foto_url = resultado['secure_url']
+        
+        # Guardar URL en BD
+        contratista.foto_url = foto_url
+        contratista.save()
+        
+        return Response({
+            'foto_url': foto_url,
+            'mensaje': 'Foto subida exitosamente'
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        print(f"Error al subir foto: {e}")
+        return Response(
+            {'error': f'Error al subir foto: {str(e)}'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
 # RESET PASSWORD
 
 @api_view(['POST'])
