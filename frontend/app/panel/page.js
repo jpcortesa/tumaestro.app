@@ -42,14 +42,12 @@ const MAX_OFICIOS = 3
 function validarRUT(rut) {
   if (!rut || rut.trim() === '') return { valido: false, error: 'RUT es obligatorio' }
   
-  // Limpiar formato
   const rutLimpio = rut.toUpperCase().replace(/[^0-9K]/g, '')
   if (rutLimpio.length < 8) return { valido: false, error: 'RUT debe tener al menos 8 caracteres' }
   
   const numero = rutLimpio.slice(0, -1)
   const dv = rutLimpio.slice(-1)
   
-  // Calcular dígito verificador
   let suma = 0
   let multiplicador = 2
   for (let i = numero.length - 1; i >= 0; i--) {
@@ -120,7 +118,13 @@ export default function Panel() {
   const [clienteDesdesSolicitud, setClienteDesdesSolicitud] = useState(false)
 
   const [showModalCotizacion, setShowModalCotizacion] = useState(false)
-  const [formCotizacion, setFormCotizacion] = useState({ cliente: '', descripcion: '', detalle: '', incluye_iva: false, tipo_impuesto: 'ninguno' })
+  const [formCotizacion, setFormCotizacion] = useState({ 
+    cliente: '', 
+    descripcion: '', 
+    detalle: '', 
+    incluye_iva: false, 
+    tipo_impuesto: 'ninguno' 
+  })
   const [items, setItems] = useState([itemVacio()])
   const [cotizacionEditando, setCotizacionEditando] = useState(null)
   const [showModalCotizacionEnviada, setShowModalCotizacionEnviada] = useState(false)
@@ -249,12 +253,29 @@ export default function Panel() {
   }
 
   async function crearCotizacion() {
-    const itemsValidos = items.filter(i => i.descripcion && i.precio_unitario)
-    const incluye_iva = formCotizacion.tipo_impuesto === 'iva'
-    const res = await fetch(`${API}/api/cotizaciones/`, {
-      method: 'POST', headers: headers(),
-      body: JSON.stringify({ ...formCotizacion, incluye_iva, items: itemsValidos })
+  const itemsValidos = items.filter(i => i.descripcion && i.precio_unitario)
+  const subtotal = itemsValidos.reduce((acc, i) => acc + (parseInt(i.cantidad) || 1) * (parseInt(i.precio_unitario) || 0), 0)
+  
+  // Calcular impuesto automáticamente según tipo_impuesto
+  let tasa = 0
+  if (formCotizacion.tipo_impuesto === 'iva') {
+    tasa = 0.19 // IVA
+  } else if (formCotizacion.tipo_impuesto === 'honorarios') {
+    tasa = 0.1525 // Retención
+  }
+  
+  const monto = Math.round(subtotal * (1 + tasa))
+  const incluye_iva = formCotizacion.tipo_impuesto === 'iva'
+  
+  const res = await fetch(`${API}/api/cotizaciones/`, {
+    method: 'POST', headers: headers(),
+    body: JSON.stringify({ 
+      ...formCotizacion, 
+      incluye_iva,
+      monto,
+      items: itemsValidos 
     })
+  })
     if (res.ok) {
       setShowModalCotizacion(false); setCotizacionEditando(null)
       setFormCotizacion({ cliente: '', descripcion: '', detalle: '', incluye_iva: false, tipo_impuesto: 'ninguno' })
@@ -264,13 +285,18 @@ export default function Panel() {
 
   async function editarCotizacion() {
     const itemsValidos = items.filter(i => i.descripcion && i.precio_unitario)
-    const tasa = TIPOS_IMPUESTO.find(t => t.value === formCotizacion.tipo_impuesto)?.tasa || 0
+    const tasaImpuesto = TIPOS_IMPUESTO.find(t => t.value === formCotizacion.tipo_impuesto)?.tasa || 0
     const subtotal = itemsValidos.reduce((acc, i) => acc + (parseInt(i.cantidad) || 1) * (parseInt(i.precio_unitario) || 0), 0)
-    const monto = Math.round(subtotal * (1 + tasa))
+    const monto = Math.round(subtotal * (1 + tasaImpuesto))
     const incluye_iva = formCotizacion.tipo_impuesto === 'iva'
+    
     const res = await fetch(`${API}/api/cotizaciones/${cotizacionEditando}/`, {
       method: 'PATCH', headers: headers(),
-      body: JSON.stringify({ ...formCotizacion, incluye_iva, monto })
+      body: JSON.stringify({ 
+        ...formCotizacion, 
+        incluye_iva,
+        monto 
+      })
     })
     if (res.ok) {
       setShowModalCotizacion(false); setCotizacionEditando(null)
@@ -280,8 +306,13 @@ export default function Panel() {
   }
 
   function abrirEditarCotizacion(c) {
-    const tipo = c.incluye_iva ? 'iva' : 'ninguno'
-    setFormCotizacion({ cliente: c.cliente, descripcion: c.descripcion, detalle: c.detalle || '', incluye_iva: c.incluye_iva, tipo_impuesto: tipo })
+    setFormCotizacion({ 
+      cliente: c.cliente, 
+      descripcion: c.descripcion, 
+      detalle: c.detalle || '', 
+      incluye_iva: c.incluye_iva, 
+      tipo_impuesto: c.tipo_impuesto
+    })
     setItems(c.items?.length > 0 ? c.items.map(i => ({ descripcion: i.descripcion, cantidad: i.cantidad, precio_unitario: i.precio_unitario })) : [itemVacio()])
     setCotizacionEditando(c.id); setShowModalCotizacion(true)
   }
@@ -374,7 +405,6 @@ export default function Panel() {
   }
   function quitarComuna(comuna) { setFormConfig({ ...formConfig, comunas: (formConfig.comunas || []).filter(c => c !== comuna) }) }
 
-  // ── helpers oficios múltiples en configuración ──
   function agregarOficioConfig(oficio) {
     if (!oficio || (formConfig.oficios || []).includes(oficio)) return
     if ((formConfig.oficios || []).length >= MAX_OFICIOS) return
@@ -402,13 +432,54 @@ export default function Panel() {
   const añoActual = new Date().getFullYear()
   const trabajosActivos = trabajosReal.filter(t => t.estado === 'pendiente' || t.estado === 'en_progreso').length
   const cotizacionesPendientes = cotizacionesReal.filter(c => c.estado === 'borrador' || c.estado === 'enviada').length
-  const ingresosMes = trabajosReal
-    .filter(t => {
-      if (t.estado !== 'completado') return false
-      const fecha = new Date(t.fecha || t.creado_en || t.updated_at)
-      return fecha.getMonth() === mesActual && fecha.getFullYear() === añoActual
-    })
-    .reduce((acc, t) => acc + (parseInt(t.monto) || 0), 0)
+
+  // CALCULAR INGRESOS DIFERENCIADOS
+  const calcularIngresos = () => {
+    let ingresos = {
+      factura: { bruto: 0, iva: 0, neto: 0 },
+      boleta: { bruto: 0, retencion: 0, neto: 0 },
+      total_bruto: 0,
+      total_retenciones: 0,
+      total_neto: 0
+    }
+
+    trabajosReal
+      .filter(t => {
+        if (t.estado !== 'completado') return false
+        const fecha = new Date(t.fecha || t.creado_en)
+        return fecha.getMonth() === mesActual && fecha.getFullYear() === añoActual
+      })
+      .forEach(t => {
+        // Mapear tipo_impuesto a tipo de documento
+        const tipoImpuesto = t.tipo_impuesto || 'ninguno'
+
+        if (tipoImpuesto === 'iva') {
+          ingresos.factura.bruto += t.monto
+          const neto = Math.round(t.monto / 1.19)
+          const iva = t.monto - neto
+          ingresos.factura.iva += iva
+          ingresos.factura.neto += neto
+        } else if (tipoImpuesto === 'honorarios') {
+          ingresos.boleta.bruto += t.monto
+          const neto = Math.round(t.monto / 1.1525)
+          const retencion = t.monto - neto
+          ingresos.boleta.retencion += retencion
+          ingresos.boleta.neto += neto
+        } else {
+          // tipo_impuesto === 'ninguno'
+          ingresos.factura.bruto += t.monto
+          ingresos.factura.neto += t.monto
+        }
+      })
+
+    ingresos.total_bruto = ingresos.factura.bruto + ingresos.boleta.bruto
+    ingresos.total_retenciones = ingresos.factura.iva + ingresos.boleta.retencion
+    ingresos.total_neto = ingresos.factura.neto + ingresos.boleta.neto
+    
+    return ingresos
+  }
+
+  const ingresos = calcularIngresos()
 
   const trabajosRecientes = [...trabajosReal].slice(0, 5)
   const proximosTrabajos = trabajosReal.filter(t => t.estado === 'pendiente' || t.estado === 'en_progreso').slice(0, 4)
@@ -614,7 +685,13 @@ export default function Panel() {
                   {[
                     { label: 'Trabajos activos', valor: String(trabajosActivos), icono: '⚒', color: '#EEF2FF', texto: '#1B3A6B' },
                     { label: 'Cotizaciones pendientes', valor: String(cotizacionesPendientes), icono: '📋', color: '#FEF3C7', texto: '#92400E' },
-                    { label: 'Ingresos del mes', valor: ingresosMes > 0 ? `$${ingresosMes.toLocaleString('es-CL')}` : '$0', icono: '💰', color: '#ECFDF5', texto: '#065F46' },
+                    { 
+                      label: 'Ingresos netos del mes', 
+                      valor: ingresos.total_neto > 0 ? `$${ingresos.total_neto.toLocaleString('es-CL')}` : '$0', 
+                      icono: '💰', 
+                      color: '#ECFDF5', 
+                      texto: '#065F46' 
+                    },
                     { label: 'Solicitudes nuevas', valor: String(solicitudesNoLeidas), icono: '📩', color: '#FFF7ED', texto: '#C2410C' },
                   ].map(m => (
                     <div key={m.label} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '12px', padding: '20px' }}>
@@ -626,6 +703,53 @@ export default function Panel() {
                     </div>
                   ))}
                 </div>
+
+                {/* DESGLOSE DE INGRESOS */}
+                {ingresos.total_neto > 0 && (
+                  <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
+                    <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: '0 0 20px' }}>📊 Desglose de ingresos</h2>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
+                      {/* FACTURA */}
+                      {ingresos.factura.bruto > 0 && (
+                        <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '12px', padding: '20px' }}>
+                          <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#065F46', margin: '0 0 16px' }}>💼 Facturas con IVA</h3>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #BBF7D0' }}>
+                            <span style={{ fontSize: '13px', color: '#6B7280' }}>Monto facturado:</span>
+                            <span style={{ fontWeight: '600', color: '#065F46' }}>${ingresos.factura.bruto.toLocaleString('es-CL')}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', color: '#92400E' }}>
+                            <span style={{ fontSize: '13px' }}>IVA 19%:</span>
+                            <span style={{ fontWeight: '600' }}>-${ingresos.factura.iva.toLocaleString('es-CL')}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid #BBF7D0' }}>
+                            <span style={{ fontWeight: '700', color: '#065F46' }}>Neto:</span>
+                            <span style={{ fontWeight: '700', fontSize: '15px', color: '#065F46' }}>${ingresos.factura.neto.toLocaleString('es-CL')}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* BOLETA */}
+                      {ingresos.boleta.bruto > 0 && (
+                        <div style={{ background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '12px', padding: '20px' }}>
+                          <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#92400E', margin: '0 0 16px' }}>📋 Boletas de Honorario</h3>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #FCD34D' }}>
+                            <span style={{ fontSize: '13px', color: '#6B7280' }}>Monto emitido:</span>
+                            <span style={{ fontWeight: '600', color: '#92400E' }}>${ingresos.boleta.bruto.toLocaleString('es-CL')}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', color: '#92400E' }}>
+                            <span style={{ fontSize: '13px' }}>Retención 15.25%:</span>
+                            <span style={{ fontWeight: '600' }}>-${ingresos.boleta.retencion.toLocaleString('es-CL')}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid #FCD34D' }}>
+                            <span style={{ fontWeight: '700', color: '#92400E' }}>Neto:</span>
+                            <span style={{ fontWeight: '700', fontSize: '15px', color: '#92400E' }}>${ingresos.boleta.neto.toLocaleString('es-CL')}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
                     <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>Trabajos recientes</h2>
@@ -772,20 +896,32 @@ export default function Panel() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#F9FAFB' }}>
-                    {['Cliente', 'Descripción', 'Comuna', 'Fecha', 'Estado', 'Monto'].map(h => (
+                    {['Cliente', 'Descripción', 'Comuna', 'Fecha', 'Tipo doc', 'Estado', 'Monto'].map(h => (
                       <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', color: '#6B7280', fontWeight: 600, textTransform: 'uppercase' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {trabajosReal.length === 0 ? (
-                    <tr><td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: '#6B7280' }}>No hay trabajos aún</td></tr>
+                    <tr><td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: '#6B7280' }}>No hay trabajos aún</td></tr>
                   ) : trabajosReal.map(t => (
                     <tr key={t.id} style={{ borderTop: '1px solid #F3F4F6' }}>
                       <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: '14px' }}>{t.cliente}</td>
                       <td style={{ padding: '12px 16px', color: '#6B7280', fontSize: '14px' }}>{t.descripcion}</td>
                       <td style={{ padding: '12px 16px', fontSize: '14px' }}>{t.comuna}</td>
                       <td style={{ padding: '12px 16px', fontSize: '14px' }}>{t.fecha ? new Date(t.fecha).toLocaleDateString('es-CL') : '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '13px' }}>
+                        <span style={{ 
+                          background: t.tipo_impuesto === 'iva' ? '#ECFDF5' : '#FEF3C7',
+                          color: t.tipo_impuesto === 'iva' ? '#065F46' : '#92400E',
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          fontSize: '11px',
+                          fontWeight: 600
+                        }}>
+                          {t.tipo_impuesto === 'iva' ? '💼 Factura' : t.tipo_impuesto === 'honorarios' ? '📋 Boleta' : '—'}
+                        </span>
+                      </td>
                       <td style={{ padding: '12px 16px' }}>
                         {t.estado === 'completado' ? (
                           <span style={{ background: '#ECFDF5', color: '#065F46', padding: '4px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 600 }}>✓ Completado</span>
@@ -867,21 +1003,33 @@ export default function Panel() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#F9FAFB' }}>
-                    {['Cliente', 'Descripción', 'Subtotal', 'Impuesto', 'Total', 'Estado', 'Acciones'].map(h => (
+                    {['Cliente', 'Descripción', 'Tipo doc', 'Subtotal', 'Impuesto', 'Total', 'Estado', 'Acciones'].map(h => (
                       <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', color: '#6B7280', fontWeight: 600, textTransform: 'uppercase' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {cotizacionesReal.length === 0 ? (
-                    <tr><td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: '#6B7280' }}>No hay cotizaciones aún</td></tr>
+                    <tr><td colSpan={8} style={{ padding: '2rem', textAlign: 'center', color: '#6B7280' }}>No hay cotizaciones aún</td></tr>
                   ) : cotizacionesReal.map(c => {
-                    const subtotal = c.incluye_iva ? Math.round(c.monto / 1.19) : c.monto
-                    const impuesto = c.incluye_iva ? c.monto - subtotal : 0
+                    const tasaImpuesto = TIPOS_IMPUESTO.find(t => t.value === c.tipo_impuesto)?.tasa || 0
+                    const subtotal = Math.round(c.monto / (1 + tasaImpuesto))
+                    const impuesto = c.monto - subtotal
                     return (
                       <tr key={c.id} style={{ borderTop: '1px solid #F3F4F6' }}>
                         <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: '14px' }}>{clientesReal.find(cl => cl.id === c.cliente)?.nombre || c.cliente}</td>
                         <td style={{ padding: '12px 16px', color: '#6B7280', fontSize: '14px' }}>{c.descripcion}</td>
+                        <td style={{ padding: '12px 16px', fontSize: '12px' }}>
+                          <span style={{ 
+                            background: c.tipo_impuesto === 'iva' ? '#ECFDF5' : '#FEF3C7',
+                            color: c.tipo_impuesto === 'iva' ? '#065F46' : '#92400E',
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            fontWeight: 600
+                          }}>
+                            {c.tipo_impuesto === 'iva' ? '💼 Factura' : c.tipo_impuesto === 'honorarios' ? '📋 Boleta' : '—'}
+                          </span>
+                        </td>
                         <td style={{ padding: '12px 16px', fontSize: '14px' }}>${subtotal.toLocaleString('es-CL')}</td>
                         <td style={{ padding: '12px 16px', fontSize: '14px', color: impuesto > 0 ? '#92400E' : '#9CA3AF' }}>{impuesto > 0 ? `$${impuesto.toLocaleString('es-CL')}` : '—'}</td>
                         <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: '14px' }}>${c.monto?.toLocaleString('es-CL')}</td>
@@ -946,30 +1094,43 @@ export default function Panel() {
                     </div>
                     <button onClick={agregarItem} style={{ marginTop: '8px', background: 'none', border: '1px dashed #E5E7EB', borderRadius: '8px', padding: '8px', width: '100%', cursor: 'pointer', color: '#6B7280', fontSize: '13px' }}>+ Agregar item</button>
                   </div>
+
+                  {/* SELECTOR DE TIPO DE IMPUESTO */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ ...labelStyle, display: 'block', marginBottom: '8px' }}>
+                      Impuesto a aplicar en el cálculo
+                    </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {TIPOS_IMPUESTO.map(tipo => (
+                        <label key={tipo.value} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '8px 12px', borderRadius: '8px', border: `1px solid ${formCotizacion.tipo_impuesto === tipo.value ? '#1B3A6B' : '#E5E7EB'}`, background: formCotizacion.tipo_impuesto === tipo.value ? '#EEF2FF' : '#fff' }}>
+                          <input type="radio" name="tipo_impuesto" value={tipo.value} checked={formCotizacion.tipo_impuesto === tipo.value} onChange={() => setFormCotizacion({ ...formCotizacion, tipo_impuesto: tipo.value })} style={{ accentColor: '#1B3A6B' }} />
+                          <span style={{ fontSize: '13px', fontWeight: 500, color: '#111827', flex: 1 }}>{tipo.label}</span>
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: tipo.tasa > 0 ? '#92400E' : '#9CA3AF' }}>
+                            {tipo.tasa > 0 ? `+$${Math.round(subtotalItems * tipo.tasa).toLocaleString('es-CL')}` : '—'}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* RESUMEN DE TOTALES */}
                   <div style={{ background: '#F8F9FA', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
                       <span style={{ color: '#6B7280' }}>Subtotal</span>
                       <span style={{ fontWeight: 600 }}>${subtotalItems.toLocaleString('es-CL')}</span>
                     </div>
-                    <div>
-                      <label style={{ ...labelStyle, display: 'block', marginBottom: '6px' }}>Tipo de documento / impuesto</label>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        {TIPOS_IMPUESTO.map(tipo => (
-                          <label key={tipo.value} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '8px 12px', borderRadius: '8px', border: `1px solid ${formCotizacion.tipo_impuesto === tipo.value ? '#1B3A6B' : '#E5E7EB'}`, background: formCotizacion.tipo_impuesto === tipo.value ? '#EEF2FF' : '#fff' }}>
-                            <input type="radio" name="tipo_impuesto" value={tipo.value} checked={formCotizacion.tipo_impuesto === tipo.value} onChange={() => setFormCotizacion({ ...formCotizacion, tipo_impuesto: tipo.value })} style={{ accentColor: '#1B3A6B' }} />
-                            <span style={{ fontSize: '13px', fontWeight: 500, color: '#111827', flex: 1 }}>{tipo.label}</span>
-                            <span style={{ fontSize: '13px', fontWeight: 600, color: tipo.tasa > 0 ? '#92400E' : '#9CA3AF' }}>
-                              {tipo.tasa > 0 ? `+$${Math.round(subtotalItems * tipo.tasa).toLocaleString('es-CL')}` : '—'}
-                            </span>
-                          </label>
-                        ))}
+                    {tasaImpuesto > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#92400E' }}>
+                        <span>{formCotizacion.tipo_impuesto === 'iva' ? 'IVA 19%:' : 'Retención 15.25%:'}</span>
+                        <span style={{ fontWeight: 600 }}>+${Math.round(subtotalItems * tasaImpuesto).toLocaleString('es-CL')}</span>
                       </div>
-                    </div>
+                    )}
                     <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '10px', display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ fontWeight: 700, color: '#111827' }}>Total</span>
                       <span style={{ fontWeight: 700, fontSize: '16px', color: '#1B3A6B' }}>${total.toLocaleString('es-CL')}</span>
                     </div>
                   </div>
+
                   <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
                     <button onClick={() => { setShowModalCotizacion(false); setCotizacionEditando(null); setItems([itemVacio()]) }}
                       style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>Cancelar</button>
@@ -1040,7 +1201,6 @@ export default function Panel() {
               <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '20px' }}>Esta información es visible para los clientes en el directorio.</p>
               {config === null ? <p style={{ color: '#6B7280', fontSize: '14px' }}>Cargando...</p> : (
                 <>
-                  {/* SELECTOR MÚLTIPLE DE OFICIOS */}
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{ ...labelStyle, display: 'block', marginBottom: '8px' }}>
                       Oficios <span style={{ color: '#9CA3AF', fontWeight: 400 }}>(máximo {MAX_OFICIOS})</span>
@@ -1069,13 +1229,11 @@ export default function Panel() {
                     )}
                   </div>
 
-                  {/* AÑOS DE EXPERIENCIA */}
                   <div style={{ marginBottom: '16px' }}>
                     <label style={labelStyle}>Años de experiencia</label>
                     <input type="number" min="0" max="50" value={formConfig.experiencia} onChange={e => setFormConfig({ ...formConfig, experiencia: e.target.value })} style={inputStyle} />
                   </div>
 
-                  {/* COMUNAS */}
                   <div style={{ marginBottom: '16px' }}>
                     <label style={labelStyle}>Comunas donde prestas servicio</label>
                     <div style={{ marginTop: '8px' }}>

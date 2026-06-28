@@ -533,15 +533,26 @@ class CotizacionesView(APIView):
 
     def post(self, request):
         items_data = request.data.get('items', [])
-        incluye_iva = request.data.get('incluye_iva', False)
+        tipo_impuesto = request.data.get('tipo_impuesto', 'ninguno')
+        
+        # Calcular incluye_iva basado en tipo_impuesto
+        incluye_iva = tipo_impuesto in ['iva', 'honorarios']
 
         subtotal = sum(int(i.get('cantidad', 1)) * int(i.get('precio_unitario', 0)) for i in items_data)
-        monto = int(subtotal * 1.19) if incluye_iva else subtotal
+        
+        # Calcular monto según tipo_impuesto
+        if tipo_impuesto == 'iva':
+            monto = int(subtotal * 1.19)
+        elif tipo_impuesto == 'honorarios':
+            monto = int(subtotal * 1.1525)
+        else:  # 'ninguno'
+            monto = subtotal
 
         data = {
             'cliente': request.data.get('cliente'),
             'descripcion': request.data.get('descripcion'),
             'detalle': request.data.get('detalle', ''),
+            'tipo_impuesto': tipo_impuesto,
             'incluye_iva': incluye_iva,
             'monto': monto,
         }
@@ -570,6 +581,26 @@ class CotizacionDetalleView(APIView):
             return Response({'error': 'No encontrada'}, status=status.HTTP_404_NOT_FOUND)
 
         nuevo_estado = request.data.get('estado')
+        
+        # Si se está actualizando tipo_impuesto, recalcular monto
+        if 'tipo_impuesto' in request.data:
+            items = cotizacion.items.all()
+            subtotal = sum(int(i.cantidad) * int(i.precio_unitario) for i in items)
+            
+            tipo_impuesto = request.data.get('tipo_impuesto', cotizacion.tipo_impuesto)
+            
+            if tipo_impuesto == 'iva':
+                monto = int(subtotal * 1.19)
+            elif tipo_impuesto == 'honorarios':
+                monto = int(subtotal * 1.1525)
+            else:  # 'ninguno'
+                monto = subtotal
+            
+            request.data._mutable = True if hasattr(request.data, '_mutable') else None
+            request.data['monto'] = monto
+            incluye_iva = tipo_impuesto in ['iva', 'honorarios']
+            request.data['incluye_iva'] = incluye_iva
+        
         serializer = CotizacionSerializer(cotizacion, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()

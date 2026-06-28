@@ -50,6 +50,12 @@ class Cotizacion(models.Model):
         ('aprobada', 'Aprobada'),
         ('rechazada', 'Rechazada'),
     ]
+    
+    TIPO_IMPUESTO_CHOICES = [
+        ('ninguno', 'Sin impuesto'),
+        ('iva', 'IVA 19%'),
+        ('honorarios', 'Retención 15,25%'),
+    ]
 
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
@@ -59,6 +65,11 @@ class Cotizacion(models.Model):
     detalle = models.TextField(blank=True)
     monto = models.IntegerField(default=0)
     incluye_iva = models.BooleanField(default=False)
+    tipo_impuesto = models.CharField(
+        max_length=20,
+        choices=TIPO_IMPUESTO_CHOICES,
+        default='ninguno'
+    )
     estado = models.CharField(max_length=20, choices=ESTADOS, default='borrador')
     token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     creado_en = models.DateTimeField(auto_now_add=True)
@@ -86,6 +97,7 @@ class Cotizacion(models.Model):
                     print(f"  - RUT: {cliente_rut_value}")
                     print(f"  - Email: {cliente_email_value}")
                     print(f"  - Comuna: {cliente_comuna_value}")
+                    print(f"  - Tipo impuesto: {self.tipo_impuesto}")
                     
                     trabajo = Trabajo.objects.create(
                         usuario=self.usuario,
@@ -96,6 +108,7 @@ class Cotizacion(models.Model):
                         comuna=cliente_comuna_value,
                         monto=self.monto,
                         incluye_iva=self.incluye_iva,
+                        tipo_impuesto=self.tipo_impuesto,
                         estado='pendiente',
                         fecha=self.creado_en.date(),
                     )
@@ -135,6 +148,12 @@ class Trabajo(models.Model):
         ('cotizacion', 'Cotizacion'),
     ]
     
+    TIPO_IMPUESTO_CHOICES = [
+        ('ninguno', 'Sin impuesto'),
+        ('iva', 'IVA 19%'),
+        ('honorarios', 'Retención 15,25%'),
+    ]
+    
     TRANSICIONES_PERMITIDAS = {
         'pendiente': ['en_progreso'],
         'en_progreso': ['completado'],
@@ -150,6 +169,11 @@ class Trabajo(models.Model):
     comuna = models.CharField(max_length=100)
     monto = models.IntegerField(default=0)
     incluye_iva = models.BooleanField(default=False)
+    tipo_impuesto = models.CharField(
+        max_length=20,
+        choices=TIPO_IMPUESTO_CHOICES,
+        default='ninguno'
+    )
     estado = models.CharField(max_length=20, choices=ESTADOS, default='pendiente')
     fecha = models.DateField(auto_now_add=True)
     creado_en = models.DateTimeField(auto_now_add=True)
