@@ -1021,7 +1021,7 @@ def subir_foto_perfil(request):
     try:
         import cloudinary
         import cloudinary.uploader
-        import cloudinary.api
+        from cloudinary.utils import cloudinary_url
         
         # Configurar Cloudinary
         cloudinary.config(
@@ -1039,7 +1039,7 @@ def subir_foto_perfil(request):
         
         # Generar URL con transformaciones
         public_id = resultado['public_id']
-        foto_url = cloudinary.url(
+        foto_url, _ = cloudinary_url(
             public_id,
             width=400,
             height=400,
