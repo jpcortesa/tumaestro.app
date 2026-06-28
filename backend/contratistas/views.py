@@ -1039,10 +1039,11 @@ def subir_foto_perfil(request):
             resource_type='auto',
         )
         
-        # Construir URL con transformaciones manualmente
+        # Construir URL simple (sin transformaciones en URL)
+        # El CSS del avatar se encarga del recorte
         cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME')
         public_id = resultado['public_id']
-        foto_url = f"https://res.cloudinary.com/{cloud_name}/image/upload/w_400,h_400,c_fill,g_face,q_auto/{public_id}"
+        foto_url = f"https://res.cloudinary.com/{cloud_name}/image/upload/{public_id}"
         
         # Guardar URL en BD
         contratista.foto_url = foto_url
