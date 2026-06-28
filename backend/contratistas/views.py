@@ -1046,8 +1046,15 @@ def subir_foto_perfil(request):
         foto_url = f"https://res.cloudinary.com/{cloud_name}/image/upload/{public_id}"
         
         # Guardar URL en BD
+        print(f"DEBUG: Guardando foto_url: {foto_url}")
+        print(f"DEBUG: Contratista antes: foto_url={contratista.foto_url}")
         contratista.foto_url = foto_url
         contratista.save()
+        print(f"DEBUG: Contratista después: foto_url={contratista.foto_url}")
+        
+        # Verificar que se guardó
+        contratista.refresh_from_db()
+        print(f"DEBUG: Contratista refrescado: foto_url={contratista.foto_url}")
         
         return Response({
             'foto_url': foto_url,
