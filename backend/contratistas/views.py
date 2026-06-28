@@ -1021,6 +1021,7 @@ def subir_foto_perfil(request):
     try:
         import cloudinary
         import cloudinary.uploader
+        import cloudinary.api
         
         # Configurar Cloudinary
         cloudinary.config(
@@ -1029,18 +1030,24 @@ def subir_foto_perfil(request):
             api_secret=os.environ.get('CLOUDINARY_API_SECRET'),
         )
         
-        # Subir a Cloudinary
+        # Subir a Cloudinary (sin transformaciones en upload)
         resultado = cloudinary.uploader.upload(
             archivo,
             folder='tumaestro/fotos-perfil',
             resource_type='auto',
-            transformation=[
-                {'width': 400, 'height': 400, 'crop': 'fill', 'gravity': 'face'},
-                {'quality': 'auto'},
-            ]
         )
         
-        foto_url = resultado['secure_url']
+        # Generar URL con transformaciones
+        public_id = resultado['public_id']
+        foto_url = cloudinary.url(
+            public_id,
+            width=400,
+            height=400,
+            crop='fill',
+            gravity='face',
+            quality='auto',
+            secure=True
+        )
         
         # Guardar URL en BD
         contratista.foto_url = foto_url
