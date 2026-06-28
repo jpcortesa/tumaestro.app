@@ -23,6 +23,7 @@ class Contratista(models.Model):
     activo = models.BooleanField(default=True)
     email_verificado = models.BooleanField(default=False)
     verificado = models.BooleanField(default=False)
+    foto_url = models.URLField(blank=True, null=True, help_text="URL de la foto de perfil en Cloudinary")
     creado_en = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
