@@ -414,17 +414,22 @@ export default function Panel() {
         body: formData
       })
       const data = await res.json()
+      console.log('Respuesta upload foto:', data)
+      
       if (res.ok) {
         // Refrescar perfil completo
         const perfRes = await fetch(`${API}/api/perfil/`, { headers: { 'Authorization': `Bearer ${token()}` } })
         const perfData = await perfRes.json()
+        console.log('Perfil refrescado:', perfData)
         setConfig(perfData)
         setMsgConfig({ tipo: 'ok', texto: 'Foto actualizada ✓' })
         setTimeout(() => setMsgConfig(null), 3000)
       } else {
+        console.error('Error en upload:', data)
         setMsgConfig({ tipo: 'error', texto: data.error || 'Error al subir foto' })
       }
     } catch (err) {
+      console.error('Error de conexión:', err)
       setMsgConfig({ tipo: 'error', texto: 'Error de conexión' })
     } finally {
       setFotoSubiendo(false)
