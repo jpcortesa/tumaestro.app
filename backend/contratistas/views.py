@@ -442,10 +442,12 @@ class PerfilView(APIView):
             contratista_id = contratista.id
             oficio = contratista.oficio
             email_verificado = contratista.email_verificado
+            foto_url = contratista.foto_url
         except Contratista.DoesNotExist:
             contratista_id = None
             oficio = None
             email_verificado = False
+            foto_url = None
 
         return Response({
             'nombre': f'{user.first_name} {user.last_name}'.strip(),
@@ -454,6 +456,7 @@ class PerfilView(APIView):
             'contratista_id': contratista_id,
             'oficio': oficio,
             'email_verificado': email_verificado,
+            'foto_url': foto_url,
         })
 
 
