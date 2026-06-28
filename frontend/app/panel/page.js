@@ -148,6 +148,8 @@ export default function Panel() {
   const [eliminando, setEliminando] = useState(false)
   const [passwordEliminar, setPasswordEliminar] = useState('')
   const [showConfirmEliminar, setShowConfirmEliminar] = useState(false)
+  const [fotoSubiendo, setFotoSubiendo] = useState(false)
+  const [fotoInputRef, setFotoInputRef] = useState(null)
 
   const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
   const token = () => localStorage.getItem('token')
@@ -395,6 +397,36 @@ export default function Panel() {
     setEliminando(false)
     if (res.ok) { localStorage.removeItem('token'); localStorage.removeItem('refresh'); window.location.href = '/' }
     else { const data = await res.json(); alert(data.error || 'Error al eliminar la cuenta') }
+  }
+
+  async function subirFoto(e) {
+    const archivo = e.target.files?.[0]
+    if (!archivo) return
+    
+    setFotoSubiendo(true)
+    const formData = new FormData()
+    formData.append('archivo', archivo)
+    
+    try {
+      const res = await fetch(`${API}/api/configuracion/foto/`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token()}` },
+        body: formData
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setConfig({ ...config, foto_url: data.foto_url })
+        setMsgConfig({ tipo: 'ok', texto: 'Foto actualizada ✓' })
+        setTimeout(() => setMsgConfig(null), 3000)
+      } else {
+        setMsgConfig({ tipo: 'error', texto: data.error || 'Error al subir foto' })
+      }
+    } catch (err) {
+      setMsgConfig({ tipo: 'error', texto: 'Error de conexión' })
+    } finally {
+      setFotoSubiendo(false)
+      if (fotoInputRef) fotoInputRef.value = ''
+    }
   }
 
   const todasSeleccionadas = (formConfig.comunas || []).includes(TODAS_COMUNAS)
@@ -1201,6 +1233,54 @@ export default function Panel() {
               <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '20px' }}>Esta información es visible para los clientes en el directorio.</p>
               {config === null ? <p style={{ color: '#6B7280', fontSize: '14px' }}>Cargando...</p> : (
                 <>
+                  {/* FOTO DE PERFIL */}
+                  <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid #F3F4F6' }}>
+                    <label style={{ ...labelStyle, display: 'block', marginBottom: '12px' }}>Foto de perfil</label>
+                    <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                      {/* Avatar */}
+                      <div style={{
+                        width: '80px', height: '80px', borderRadius: '50%',
+                        background: config?.foto_url ? '#fff' : '#EEF2FF',
+                        backgroundImage: config?.foto_url ? `url(${config.foto_url})` : 'none',
+                        backgroundSize: 'cover', backgroundPosition: 'center',
+                        border: '3px solid #E5E7EB', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#9CA3AF', fontSize: '32px', fontWeight: 600
+                      }}>
+                        {!config?.foto_url && 'JO'}
+                      </div>
+                      
+                      {/* Upload button */}
+                      <div style={{ flex: 1 }}>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={subirFoto}
+                          disabled={fotoSubiendo}
+                          style={{ display: 'none' }}
+                          ref={setFotoInputRef}
+                          id="foto-input"
+                        />
+                        <button
+                          onClick={() => document.getElementById('foto-input')?.click()}
+                          disabled={fotoSubiendo}
+                          style={{
+                            background: fotoSubiendo ? '#9CA3AF' : '#1B3A6B',
+                            color: 'white', border: 'none', padding: '10px 16px',
+                            borderRadius: '8px', cursor: fotoSubiendo ? 'not-allowed' : 'pointer',
+                            fontWeight: 600, fontSize: '14px'
+                          }}
+                        >
+                          {fotoSubiendo ? '⏳ Subiendo...' : '📷 Cambiar foto'}
+                        </button>
+                        <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '8px 0 0' }}>
+                          JPG, PNG o WebP • Máx 5MB
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* OFICIOS */}
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{ ...labelStyle, display: 'block', marginBottom: '8px' }}>
                       Oficios <span style={{ color: '#9CA3AF', fontWeight: 400 }}>(máximo {MAX_OFICIOS})</span>
