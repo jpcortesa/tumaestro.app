@@ -415,7 +415,10 @@ export default function Panel() {
       })
       const data = await res.json()
       if (res.ok) {
-        setConfig({ ...config, foto_url: data.foto_url })
+        // Refrescar perfil completo
+        const perfRes = await fetch(`${API}/api/perfil/`, { headers: { 'Authorization': `Bearer ${token()}` } })
+        const perfData = await perfRes.json()
+        setConfig(perfData)
         setMsgConfig({ tipo: 'ok', texto: 'Foto actualizada ✓' })
         setTimeout(() => setMsgConfig(null), 3000)
       } else {

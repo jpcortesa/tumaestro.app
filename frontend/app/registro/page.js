@@ -63,7 +63,7 @@ function ModalAviso({ onAceptar, onCerrar }) {
   const puntos = [
     { icono: '✍️', titulo: 'Ingresa tus datos con cuidado', texto: 'Tu nombre, oficios, comunas y descripción formarán parte de tu perfil público. Asegúrate de que estén bien escritos y representen bien tu trabajo — es lo primero que verán tus futuros clientes.' },
     { icono: '🔒', titulo: 'Tu privacidad está protegida', texto: 'Solo serán visibles públicamente tu nombre, oficios, comunas donde prestas servicio, descripción y las reseñas de tus clientes. Tu teléfono y email son privados y nunca se mostrarán en tu perfil.' },
-    { icono: '📸', titulo: 'Tu foto de perfil será obligatoria', texto: 'Una vez registrado, deberás subir una foto de perfil desde tu panel. Esto es obligatorio para activar tu perfil público, ya que brinda seguridad y transparencia a los clientes que te contactarán a través de la plataforma.' },
+    { icono: '📸', titulo: 'Tu foto de perfil ', texto: 'Una vez registrado, te recomendamos que subas tu foto de perfil desde tu panel. Esto es recomendado para activar tu perfil público, ya que brinda seguridad y transparencia a los clientes que te contactarán a través de la plataforma.' },
   ]
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '24px' }}>
