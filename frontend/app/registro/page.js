@@ -293,7 +293,7 @@ export default function Registro() {
 
           {paso === 1 && (
             <div>
-              <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '24px' }}>Datos personales</h2>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '24px' }}>Datos personales o Comerciales</h2>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                 <div>
                   <label style={labelStyle}>Nombre *</label>
