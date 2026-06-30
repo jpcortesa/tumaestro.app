@@ -662,6 +662,7 @@ def contratista_publico(request, pk):
         'certificacion': c.certificacion,
         'verificado': c.verificado,
         'telefono': c.telefono,
+        'foto_url': c.foto_url,
     })
 
 
@@ -1173,4 +1174,4 @@ def reenviar_verificacion(request):
     nuevo_token = EmailVerificationToken.objects.create(user=user)
     enviar_email_verificacion(user, nuevo_token.token)
 
-    return Response({'mensaje': 'Si ese email está registrado y pendiente de verificación, recibirás un nuevo link.'})# Redeploy force - Mon Jun 29 21:52:04 -04 2026
+    return Response({'mensaje': 'Si ese email está registrado y pendiente de verificación, recibirás un nuevo link.'})
