@@ -1375,7 +1375,7 @@ export default function Panel() {
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           color: '#9CA3AF', fontSize: '32px', fontWeight: 600
                         }}>
-                          
+                          JO
                         </div>
                       )}
                       
