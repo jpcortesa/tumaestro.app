@@ -350,7 +350,12 @@ export default function Panel() {
   async function fetchConfig() {
     const res = await fetch(`${API}/api/configuracion/`, { headers: { 'Authorization': `Bearer ${token()}` } })
     const data = await res.json()
-    setConfig(data)
+    
+    // Cargar perfil para obtener foto_url
+    const perfRes = await fetch(`${API}/api/perfil/`, { headers: { 'Authorization': `Bearer ${token()}` } })
+    const perfData = await perfRes.json()
+    
+    setConfig({ ...data, foto_url: perfData.foto_url })
     setFormConfig({
       oficio: data.oficio || '',
       oficios: data.oficios || [],
