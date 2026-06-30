@@ -127,6 +127,8 @@ export default function Panel() {
   })
   const [items, setItems] = useState([itemVacio()])
   const [cotizacionEditando, setCotizacionEditando] = useState(null)
+  const [viewingQuote, setViewingQuote] = useState(null)
+  const [showModalViewCotizacion, setShowModalViewCotizacion] = useState(false)
   const [showModalCotizacionEnviada, setShowModalCotizacionEnviada] = useState(false)
 
   const [solicitudes, setSolicitudes] = useState([])
@@ -317,6 +319,14 @@ export default function Panel() {
     })
     setItems(c.items?.length > 0 ? c.items.map(i => ({ descripcion: i.descripcion, cantidad: i.cantidad, precio_unitario: i.precio_unitario })) : [itemVacio()])
     setCotizacionEditando(c.id); setShowModalCotizacion(true)
+  }
+
+  function abrirVerCotizacion(c) {
+    setViewingQuote({
+      ...c,
+      items: c.items || []
+    })
+    setShowModalViewCotizacion(true)
   }
 
   async function cambiarEstadoCotizacion(id, nuevoEstado) {
@@ -1086,9 +1096,9 @@ export default function Panel() {
                             <button onClick={() => abrirEditarCotizacion(c)} style={btnEditar}>Editar</button>
                             <button onClick={() => cambiarEstadoCotizacion(c.id, 'enviada')} style={{ ...btnEditar, color: '#3730A3', borderColor: '#C7D2FE' }}>Enviar</button>
                           </>}
-                          {c.estado === 'enviada' && <span style={{ fontSize: '12px', color: '#3730A3', fontWeight: 500 }}>📧 Enviada al cliente</span>}
-                          {c.estado === 'aprobada' && <span style={{ fontSize: '12px', color: '#065F46', fontWeight: 600 }}>✓ Aprobada</span>}
-                          {c.estado === 'rechazada' && <span style={{ fontSize: '12px', color: '#991B1B' }}>✗ Rechazada</span>}
+                          {c.estado === 'enviada' && <button onClick={() => abrirVerCotizacion(c)} style={{ ...btnEditar, color: '#3730A3', borderColor: '#C7D2FE' }}>👁️ Ver</button>}
+                          {c.estado === 'aprobada' && <button onClick={() => abrirVerCotizacion(c)} style={{ ...btnEditar, color: '#065F46', borderColor: '#D1FAE5' }}>👁️ Ver</button>}
+                          {c.estado === 'rechazada' && <button onClick={() => abrirVerCotizacion(c)} style={{ ...btnEditar, color: '#991B1B', borderColor: '#FECACA' }}>👁️ Ver</button>}
                         </td>
                       </tr>
                     )
@@ -1184,6 +1194,95 @@ export default function Panel() {
                       {cotizacionEditando ? 'Guardar cambios' : 'Guardar cotización'}
                     </button>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* MODAL VER COTIZACIÓN (SOLO LECTURA) */}
+            {showModalViewCotizacion && viewingQuote && (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, overflowY: 'auto', padding: '20px' }}>
+                <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '520px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <h2 style={{ fontWeight: 700, color: '#1B3A6B', margin: 0 }}>Detalle de Cotización</h2>
+                  
+                  <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '12px 14px', fontSize: '13px', color: '#166534' }}>
+                    👁️ Esta es una vista de solo lectura. No puedes hacer cambios aquí.
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Cliente</label>
+                    <input type="text" value={clientesReal.find(cl => cl.id === viewingQuote.cliente)?.nombre || viewingQuote.cliente} disabled style={{ ...inputStyle, background: '#F9FAFB', color: '#6B7280', cursor: 'not-allowed' }} />
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Descripción general</label>
+                    <input type="text" value={viewingQuote.descripcion || ''} disabled style={{ ...inputStyle, background: '#F9FAFB', color: '#6B7280', cursor: 'not-allowed' }} />
+                  </div>
+
+                  <div>
+                    <label style={{ ...labelStyle, display: 'block', marginBottom: '8px' }}>Items de la cotización</label>
+                    <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden', background: '#F9FAFB' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 120px', background: '#E5E7EB', padding: '8px 12px' }}>
+                        <span style={{ fontSize: '11px', color: '#374151', fontWeight: 600, textTransform: 'uppercase' }}>Descripción</span>
+                        <span style={{ fontSize: '11px', color: '#374151', fontWeight: 600, textTransform: 'uppercase' }}>Cant.</span>
+                        <span style={{ fontSize: '11px', color: '#374151', fontWeight: 600, textTransform: 'uppercase' }}>Precio unit.</span>
+                      </div>
+                      {viewingQuote.items.length > 0 ? viewingQuote.items.map((item, idx) => (
+                        <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 120px', gap: '4px', padding: '10px 12px', borderTop: '1px solid #E5E7EB', alignItems: 'center' }}>
+                          <span style={{ fontSize: '13px', color: '#374151' }}>{item.descripcion || '—'}</span>
+                          <span style={{ fontSize: '13px', color: '#374151', textAlign: 'center' }}>{item.cantidad || 1}</span>
+                          <span style={{ fontSize: '13px', color: '#374151', textAlign: 'right' }}>${parseInt(item.precio_unitario || 0).toLocaleString('es-CL')}</span>
+                        </div>
+                      )) : (
+                        <div style={{ padding: '10px 12px', color: '#9CA3AF', textAlign: 'center' }}>Sin items</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Tipo de impuesto</label>
+                    <input type="text" 
+                      value={TIPOS_IMPUESTO.find(t => t.value === viewingQuote.tipo_impuesto)?.label || viewingQuote.tipo_impuesto} 
+                      disabled 
+                      style={{ ...inputStyle, background: '#F9FAFB', color: '#6B7280', cursor: 'not-allowed' }} />
+                  </div>
+
+                  {/* RESUMEN DE TOTALES */}
+                  <div style={{ background: '#F8F9FA', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {(() => {
+                      const tasaImpuesto = TIPOS_IMPUESTO.find(t => t.value === viewingQuote.tipo_impuesto)?.tasa || 0
+                      const subtotal = Math.round(viewingQuote.monto / (1 + tasaImpuesto))
+                      const impuesto = viewingQuote.monto - subtotal
+                      return (
+                        <>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                            <span style={{ color: '#6B7280' }}>Subtotal</span>
+                            <span style={{ fontWeight: 600 }}>${subtotal.toLocaleString('es-CL')}</span>
+                          </div>
+                          {impuesto > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#92400E' }}>
+                              <span>{viewingQuote.tipo_impuesto === 'iva' ? 'IVA 19%:' : 'Retención 15.25%:'}</span>
+                              <span style={{ fontWeight: 600 }}>+${impuesto.toLocaleString('es-CL')}</span>
+                            </div>
+                          )}
+                          <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '10px', display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ fontWeight: 700, color: '#111827' }}>Total</span>
+                            <span style={{ fontWeight: 700, fontSize: '16px', color: '#1B3A6B' }}>${viewingQuote.monto?.toLocaleString('es-CL')}</span>
+                          </div>
+                          <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 600, color: '#111827' }}>Estado</span>
+                            <span style={{ background: estadoColorCotizacion[viewingQuote.estado]?.bg || '#F3F4F6', color: estadoColorCotizacion[viewingQuote.estado]?.color || '#374151', padding: '4px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 600 }}>
+                              {viewingQuote.estado}
+                            </span>
+                          </div>
+                        </>
+                      )
+                    })()}
+                  </div>
+
+                  <button onClick={() => { setShowModalViewCotizacion(false); setViewingQuote(null) }}
+                    style={{ padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px', fontWeight: 600, marginTop: '8px' }}>
+                    Cerrar
+                  </button>
                 </div>
               </div>
             )}
