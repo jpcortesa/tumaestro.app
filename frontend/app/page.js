@@ -68,6 +68,11 @@ export default function Home() {
     return coincideOficio && coincideComuna && coincideBusqueda
   })
 
+  // Máximo 4 tarjetas, ordenadas random
+  const contraistasAMostrar = [...filtrados]
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 4)
+
   return (
     <div style={{ minHeight: '100vh', background: '#F8F9FA' }}>
 
@@ -155,7 +160,7 @@ export default function Home() {
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginBottom: '48px' }}>
-            {filtrados.map(c => {
+            {contraistasAMostrar.map(c => {
               const comunasTexto = c.comunas?.includes('Todas las comunas de Santiago')
                 ? '🗺 Toda Santiago'
                 : c.comunas?.length > 0
