@@ -204,25 +204,48 @@ export default function Home() {
         )}
 
         {/* CTA CONTRATISTAS */}
-        <div style={{ background: '#1B3A6B', borderRadius: '16px', padding: '40px 48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <p style={{ fontSize: '12px', fontWeight: '600', color: '#93C5FD', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Para profesionales</p>
-            <h2 style={{ fontSize: '28px', fontWeight: '700', color: '#fff', marginBottom: '12px' }}>¿Eres contratista?<br />Haz crecer tu negocio.</h2>
-            <div style={{ display: 'flex', gap: '20px' }}>
-              {['Sin costo de registro', 'Sin comisiones', 'Contratistas verificados'].map(t => (
-                <span key={t} style={{ fontSize: '14px', color: '#93C5FD', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ color: '#34D399' }}>✓</span> {t}
-                </span>
-              ))}
+        <div style={{ background: '#1B3A6B', borderRadius: '16px', padding: '40px 48px' }}>
+          <div style={{ display: 'flex', gap: '80px', alignItems: 'flex-start' }}>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: '12px', fontWeight: '600', color: '#93C5FD', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Para profesionales</p>
+              <h2 style={{ fontSize: '32px', fontWeight: '700', color: '#fff', marginBottom: '8px', lineHeight: '1.2' }}>Gestiona tu negocio en un solo lugar</h2>
+              <p style={{ fontSize: '16px', color: '#E0E7FF', marginBottom: '28px' }}>Recibe solicitudes, crea cotizaciones, gestiona trabajos y crece con reseñas reales.</p>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
+                {[
+                  { icon: '📩', title: 'Recibe solicitudes', desc: 'Clientes te contactan directamente' },
+                  { icon: '📋', title: 'Crea cotizaciones', desc: 'Profesionales y rápidas' },
+                  { icon: '✅', title: 'Gestiona trabajos', desc: 'Controla todos tus proyectos' },
+                  { icon: '⭐', title: 'Reseñas verificadas', desc: 'Construye tu reputación' }
+                ].map(benefit => (
+                  <div key={benefit.title} style={{ display: 'flex', gap: '12px' }}>
+                    <span style={{ fontSize: '20px', marginTop: '2px' }}>{benefit.icon}</span>
+                    <div>
+                      <p style={{ fontSize: '13px', fontWeight: '600', color: '#fff', margin: '0 0 2px' }}>{benefit.title}</p>
+                      <p style={{ fontSize: '12px', color: '#93C5FD', margin: 0 }}>{benefit.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', gap: '24px', paddingTop: '16px', borderTop: '1px solid #3B5998' }}>
+                {['Sin costo de registro', 'Sin comisiones', 'Soporte profesional'].map(t => (
+                  <span key={t} style={{ fontSize: '13px', color: '#93C5FD', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ color: '#34D399' }}>✓</span> {t}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <button
-              onClick={() => window.location.href = '/registro'}
-              style={{ background: '#F97316', border: 'none', color: '#fff', padding: '16px 32px', borderRadius: '10px', fontSize: '16px', fontWeight: '600', cursor: 'pointer', marginBottom: '8px', display: 'block' }}>
-              Comenzar gratis →
-            </button>
-            <span style={{ fontSize: '13px', color: '#93C5FD' }}>No se requiere ningún tipo de pago</span>
+
+            <div style={{ textAlign: 'center', paddingTop: '8px' }}>
+              <button
+                onClick={() => window.location.href = '/registro'}
+                style={{ background: '#F97316', border: 'none', color: '#fff', padding: '18px 40px', borderRadius: '10px', fontSize: '16px', fontWeight: '600', cursor: 'pointer', marginBottom: '12px', display: 'block', whiteSpace: 'nowrap' }}>
+                Crear cuenta gratis →
+              </button>
+              <span style={{ fontSize: '13px', color: '#93C5FD', display: 'block' }}>Acceso inmediato al panel</span>
+              <span style={{ fontSize: '12px', color: '#7C8DB8', display: 'block', marginTop: '4px' }}>Sin tarjeta de crédito</span>
+            </div>
           </div>
         </div>
       </div>
