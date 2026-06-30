@@ -209,7 +209,7 @@ export default function Home() {
             <div style={{ flex: 1 }}>
               <p style={{ fontSize: '12px', fontWeight: '600', color: '#93C5FD', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Para profesionales</p>
               <h2 style={{ fontSize: '32px', fontWeight: '700', color: '#fff', marginBottom: '8px', lineHeight: '1.2' }}>Gestiona tu negocio en un solo lugar</h2>
-              <p style={{ fontSize: '16px', color: '#E0E7FF', marginBottom: '28px' }}>Recibe solicitudes, crea cotizaciones, gestiona trabajos y crece con reseñas reales.</p>
+              
               
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                 {[
