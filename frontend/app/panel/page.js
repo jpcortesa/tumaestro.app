@@ -640,13 +640,6 @@ export default function Panel() {
             </h1>
             <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>{fechaCapitalizada}</p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-              <span style={{ fontSize: '16px' }}>🔔</span>
-            </div>
-            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#1B3A6B', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '600', fontSize: '13px' }}>
-              {usuario.nombre ? usuario.nombre.slice(0, 2).toUpperCase() : 'CM'}
-            </div>
           </div>
         </div>
 
