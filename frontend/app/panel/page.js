@@ -642,7 +642,6 @@ export default function Panel() {
             </h1>
             <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>{fechaCapitalizada}</p>
           </div>
-          </div>
         </div>
 
         {/* MODAL COTIZACIÓN ENVIADA */}
