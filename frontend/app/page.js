@@ -156,7 +156,6 @@ export default function Home() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginBottom: '48px' }}>
             {filtrados.map(c => {
-              const color = colorPorNombre(c.nombre)
               const comunasTexto = c.comunas?.includes('Todas las comunas de Santiago')
                 ? '🗺 Toda Santiago'
                 : c.comunas?.length > 0
@@ -168,9 +167,17 @@ export default function Home() {
                   onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)'}
                   onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                    <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '600', fontSize: '16px' }}>
-                      {iniciales(c.nombre)}
-                    </div>
+                    {c.foto_url ? (
+                      <img
+                        src={c.foto_url}
+                        alt={c.nombre}
+                        style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                      />
+                    ) : (
+                      <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: colorPorNombre(c.nombre), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '600', fontSize: '16px', flexShrink: 0 }}>
+                        {iniciales(c.nombre)}
+                      </div>
+                    )}
                     {c.verificado && (
                       <span style={{ background: '#ECFDF5', color: '#059669', fontSize: '12px', padding: '4px 10px', borderRadius: '999px', fontWeight: '500' }}>✓ Verificado</span>
                     )}

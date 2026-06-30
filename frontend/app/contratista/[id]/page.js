@@ -193,9 +193,17 @@ export default function PerfilContratista() {
           <div>
             <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '32px', marginBottom: '24px' }}>
               <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
-                <div style={{ width: '88px', height: '88px', borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '700', fontSize: '28px', flexShrink: 0 }}>
-                  {iniciales(contratista.nombre)}
-                </div>
+                {contratista.foto_url ? (
+                  <img
+                    src={contratista.foto_url}
+                    alt={contratista.nombre}
+                    style={{ width: '88px', height: '88px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                  />
+                ) : (
+                  <div style={{ width: '88px', height: '88px', borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '700', fontSize: '28px', flexShrink: 0 }}>
+                    {iniciales(contratista.nombre)}
+                  </div>
+                )}
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
                     <h1 style={{ fontSize: '26px', fontWeight: '700', color: '#111827', margin: 0 }}>{contratista.nombre}</h1>
