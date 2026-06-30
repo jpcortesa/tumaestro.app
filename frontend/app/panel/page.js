@@ -574,8 +574,12 @@ export default function Panel() {
         </div>
         <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', marginBottom: '8px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#F97316', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '700', fontSize: '14px', flexShrink: 0 }}>
-              {usuario.nombre ? usuario.nombre.slice(0, 2).toUpperCase() : 'CM'}
+            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#F97316', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '700', fontSize: '14px', flexShrink: 0, overflow: 'hidden' }}>
+              {config?.foto_url ? (
+                <img src={config.foto_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Avatar" />
+              ) : (
+                usuario.nombre ? usuario.nombre.slice(0, 2).toUpperCase() : 'CM'
+              )}
             </div>
             <div style={{ minWidth: 0 }}>
               <p style={{ color: '#fff', fontSize: '14px', fontWeight: '500', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{usuario.nombre || 'Mi cuenta'}</p>
