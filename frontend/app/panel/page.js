@@ -30,7 +30,7 @@ const LISTA_OFICIOS = ['Gasfitero', 'Electricista', 'Pintor', 'Cerrajero', 'Jard
 const itemVacio = () => ({ descripcion: '', cantidad: 1, precio_unitario: '' })
 
 const TIPOS_IMPUESTO = [
-  { value: 'ninguno', label: 'Sin impuesto', tasa: 0 },
+  { value: 'ninguno', label: 'Exento impuesto', tasa: 0 },
   { value: 'iva', label: 'IVA 19% (Factura)', tasa: 0.19 },
   { value: 'honorarios', label: 'Retención 15,25% (Boleta honorarios)', tasa: 0.1525 },
 ]
