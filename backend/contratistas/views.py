@@ -1173,4 +1173,4 @@ def reenviar_verificacion(request):
     nuevo_token = EmailVerificationToken.objects.create(user=user)
     enviar_email_verificacion(user, nuevo_token.token)
 
-    return Response({'mensaje': 'Si ese email está registrado y pendiente de verificación, recibirás un nuevo link.'})
+    return Response({'mensaje': 'Si ese email está registrado y pendiente de verificación, recibirás un nuevo link.'})# Redeploy force - Mon Jun 29 21:52:04 -04 2026
