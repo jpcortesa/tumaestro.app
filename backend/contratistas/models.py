@@ -150,7 +150,7 @@ class Trabajo(models.Model):
     ]
     
     TIPO_IMPUESTO_CHOICES = [
-        ('ninguno', 'Sin impuesto'),
+        ('ninguno', 'Exento impuesto'),
         ('iva', 'IVA 19%'),
         ('honorarios', 'Retención 15,25%'),
     ]
