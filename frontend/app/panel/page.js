@@ -1245,18 +1245,31 @@ export default function Panel() {
                   <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid #F3F4F6' }}>
                     <label style={{ ...labelStyle, display: 'block', marginBottom: '12px' }}>Foto de perfil</label>
                     <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                      {/* Avatar */}
-                      <div style={{
-                        width: '80px', height: '80px', borderRadius: '50%',
-                        background: config?.foto_url ? '#fff' : '#EEF2FF',
-                        backgroundImage: config?.foto_url ? `url(${config.foto_url})` : 'none',
-                        backgroundSize: 'cover', backgroundPosition: 'center',
-                        border: '3px solid #E5E7EB', flexShrink: 0,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: '#9CA3AF', fontSize: '32px', fontWeight: 600
-                      }}>
-                        {!config?.foto_url && 'JO'}
-                      </div>
+                      {/* Avatar con IMG tag */}
+                      {config?.foto_url ? (
+                        <img 
+                          src={config.foto_url} 
+                          alt="Foto de perfil"
+                          style={{
+                            width: '80px', 
+                            height: '80px', 
+                            borderRadius: '50%',
+                            border: '3px solid #E5E7EB', 
+                            objectFit: 'cover',
+                            flexShrink: 0
+                          }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: '80px', height: '80px', borderRadius: '50%',
+                          background: '#EEF2FF',
+                          border: '3px solid #E5E7EB', flexShrink: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: '#9CA3AF', fontSize: '32px', fontWeight: 600
+                        }}>
+                          JO
+                        </div>
+                      )}
                       
                       {/* Upload button */}
                       <div style={{ flex: 1 }}>
