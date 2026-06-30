@@ -170,11 +170,13 @@ export default function Panel() {
             fetch(`${API}/api/trabajos/`, { headers: { 'Authorization': `Bearer ${tk}` } }).then(r => r.json()),
             fetch(`${API}/api/cotizaciones/`, { headers: { 'Authorization': `Bearer ${tk}` } }).then(r => r.json()),
             fetch(`${API}/api/mis-solicitudes/`, { headers: { 'Authorization': `Bearer ${tk}` } }).then(r => r.json()),
-          ]).then(([trabajos, cotizaciones, sols]) => {
+            fetch(`${API}/api/configuracion/`, { headers: { 'Authorization': `Bearer ${tk}` } }).then(r => r.json()),
+          ]).then(([trabajos, cotizaciones, sols, config]) => {
             setTrabajosReal(Array.isArray(trabajos) ? trabajos : [])
             setCotizacionesReal(Array.isArray(cotizaciones) ? cotizaciones : [])
             setSolicitudes(Array.isArray(sols) ? sols : [])
             setSolicitudesNoLeidas((Array.isArray(sols) ? sols : []).filter(x => !x.leida && !x.descartada).length)
+            setConfig(config || {})
             setDashboardCargando(false)
           }).catch(() => setDashboardCargando(false))
         }
@@ -640,13 +642,6 @@ export default function Panel() {
             </h1>
             <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>{fechaCapitalizada}</p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-              <span style={{ fontSize: '16px' }}>🔔</span>
-            </div>
-            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#1B3A6B', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '600', fontSize: '13px' }}>
-              {usuario.nombre ? usuario.nombre.slice(0, 2).toUpperCase() : 'CM'}
-            </div>
           </div>
         </div>
 
