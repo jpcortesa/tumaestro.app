@@ -639,6 +639,7 @@ def contratistas_publicos(request):
             'verificado': c.verificado,
             'promedio_resenas': promedio,
             'total_resenas': total,
+            'foto_url': c.foto_url,
         })
     return Response(data)
 
