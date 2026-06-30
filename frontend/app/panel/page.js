@@ -176,7 +176,8 @@ export default function Panel() {
             setCotizacionesReal(Array.isArray(cotizaciones) ? cotizaciones : [])
             setSolicitudes(Array.isArray(sols) ? sols : [])
             setSolicitudesNoLeidas((Array.isArray(sols) ? sols : []).filter(x => !x.leida && !x.descartada).length)
-            setConfig(config || {})
+            // Agregar foto_url del perfil que ya se cargó
+            setConfig({ ...config, foto_url: data.foto_url })
             setDashboardCargando(false)
           }).catch(() => setDashboardCargando(false))
         }
