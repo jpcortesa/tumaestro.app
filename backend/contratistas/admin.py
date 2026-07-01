@@ -7,7 +7,7 @@ class ContratistaAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'email_verificado', 'deleted_at', 'activo')
     list_filter = ('activo', 'email_verificado', 'deleted_at')
     search_fields = ('nombre', 'usuario__email')
-    readonly_fields = ('creado_en', 'actualizado_en', 'anonymized_at')
+    readonly_fields = ('creado_en', 'anonymized_at')
     
     fieldsets = (
         ('Información Personal', {
@@ -17,7 +17,7 @@ class ContratistaAdmin(admin.ModelAdmin):
             'fields': ('activo', 'email_verificado', 'deleted_at')
         }),
         ('Timestamps', {
-            'fields': ('creado_en', 'actualizado_en'),
+            'fields': ('creado_en', 'anonymized_at'),
             'classes': ('collapse',)
         }),
     )
