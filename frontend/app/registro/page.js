@@ -63,10 +63,42 @@ function ModalAntesDeComenzar({ onAceptar, onCerrar, showTerminos, setShowTermin
     // Vista principal
     return (
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '24px' }}>
-        <div style={{ background: '#fff', borderRadius: '16px', padding: '40px', maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ background: '#fff', borderRadius: '16px', padding: '40px', maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
           
           {/* Close Button */}
-          <button onClick={onCerrar} style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6B7280' }}>×</button>
+          <button 
+            onClick={onCerrar} 
+            title="Salir sin aceptar"
+            style={{ 
+              position: 'absolute', 
+              top: '12px', 
+              right: '12px', 
+              background: '#F3F4F6',
+              border: '1px solid #E5E7EB',
+              fontSize: '28px', 
+              cursor: 'pointer', 
+              color: '#6B7280',
+              width: '44px',
+              height: '44px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '8px',
+              transition: 'all 0.2s',
+              fontWeight: 'bold',
+              lineHeight: '1'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = '#E5E7EB'
+              e.target.style.color = '#374151'
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = '#F3F4F6'
+              e.target.style.color = '#6B7280'
+            }}
+          >
+            ×
+          </button>
 
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
@@ -92,7 +124,7 @@ function ModalAntesDeComenzar({ onAceptar, onCerrar, showTerminos, setShowTermin
               📸 Tu foto de perfil
             </h3>
             <p style={{ margin: 0, fontSize: '0.95em', color: '#6B7280', lineHeight: '1.6' }}>
-              Una vez registrado, te sugerimos que subas tu foto de perfil desde tu panel. Esto es recomendado para activar tu perfil público, brindará seguridad y transparencia a los clientes que te conacten a través de la plataforma.
+              Una vez registrado, te recomendamos que subas tu foto de perfil desde tu panel. Esto es recomendado para activar tu perfil público, ya que brinda seguridad y transparencia a los clientes que te contactarán a través de la plataforma.
             </p>
           </div>
 
@@ -167,11 +199,28 @@ function ModalAntesDeComenzar({ onAceptar, onCerrar, showTerminos, setShowTermin
   // Vista de Términos
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '24px' }}>
-      <div style={{ background: '#fff', borderRadius: '16px', padding: '40px', maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div style={{ background: '#fff', borderRadius: '16px', padding: '40px', maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
         
         <button
           onClick={() => setShowTerminos(false)}
-          style={{ background: 'none', border: 'none', color: '#1B3A6B', fontSize: '0.95em', fontWeight: '600', cursor: 'pointer', marginBottom: '24px' }}
+          style={{ 
+            background: 'none', 
+            border: '1px solid #E5E7EB', 
+            color: '#1B3A6B', 
+            fontSize: '0.95em', 
+            fontWeight: '600', 
+            cursor: 'pointer', 
+            marginBottom: '24px',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.background = '#F3F4F6'
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.background = 'none'
+          }}
         >
           ← Volver
         </button>
