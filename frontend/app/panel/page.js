@@ -414,7 +414,7 @@ export default function Panel() {
     })
     setEliminando(false)
     if (res.ok) { localStorage.removeItem('token'); localStorage.removeItem('refresh'); window.location.href = '/' }
-    else { const data = await res.json(); alert(data.error || 'Error al eliminar la cuenta') }
+    else { const data = await res.json(); alert(data.error || 'Error al desactivar la cuenta') }
   }
 
   async function subirFoto(e) {
@@ -703,14 +703,17 @@ export default function Panel() {
           </div>
         )}
 
-        {/* MODAL CONFIRMAR ELIMINACIÓN */}
+        {/* MODAL CONFIRMAR DESACTIVACIÓN */}
         {showConfirmEliminar && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}>
             <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '440px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '48px', marginBottom: '12px' }}>⚠️</div>
-                <h2 style={{ fontWeight: 700, color: '#991B1B', margin: '0 0 8px' }}>Eliminar cuenta permanentemente</h2>
-                <p style={{ color: '#6B7280', fontSize: '14px', lineHeight: '1.6' }}>Esta acción es irreversible. Se eliminarán todos tus datos, trabajos, clientes y cotizaciones.</p>
+                <div style={{ fontSize: '48px', marginBottom: '12px' }}>⏸️</div>
+                <h2 style={{ fontWeight: 700, color: '#F59E0B', margin: '0 0 8px' }}>Desactivar mi cuenta</h2>
+                <p style={{ color: '#6B7280', fontSize: '14px', lineHeight: '1.6' }}>Tu cuenta se desactivará por 30 días. Puedes reactivarla en cualquier momento usando el link que recibirás por email. Después de 30 días se eliminará permanentemente.</p>
+              </div>
+              <div style={{ background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: '8px', padding: '12px 14px', fontSize: '13px', color: '#92400E', lineHeight: '1.5' }}>
+                ⏰ <strong>Período de gracia:</strong> 30 días para cambiar de idea y reactivar
               </div>
               <div>
                 <label style={labelStyle}>Ingresa tu contraseña para confirmar</label>
@@ -720,8 +723,8 @@ export default function Panel() {
                 <button onClick={() => { setShowConfirmEliminar(false); setPasswordEliminar('') }}
                   style={{ flex: 1, padding: '10px', border: '1px solid #E5E7EB', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '14px' }}>Cancelar</button>
                 <button onClick={eliminarCuenta} disabled={eliminando || !passwordEliminar}
-                  style={{ flex: 1, padding: '10px', background: eliminando ? '#9CA3AF' : '#DC2626', color: 'white', border: 'none', borderRadius: '8px', cursor: eliminando ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '14px' }}>
-                  {eliminando ? 'Eliminando...' : 'Eliminar cuenta'}
+                  style={{ flex: 1, padding: '10px', background: eliminando ? '#9CA3AF' : '#F59E0B', color: eliminando ? '#6B7280' : '#fff', border: 'none', borderRadius: '8px', cursor: eliminando ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '14px' }}>
+                  {eliminando ? 'Desactivando...' : 'Desactivar cuenta'}
                 </button>
               </div>
             </div>
@@ -1255,20 +1258,20 @@ export default function Panel() {
                         <>
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
                             <span style={{ color: '#6B7280' }}>Subtotal</span>
-                            <span style={{ fontWeight: 600 }}>${subtotal.toLocaleString('es-CL')}</span>
+                            <span style={{ fontWeight: '600' }}>${subtotal.toLocaleString('es-CL')}</span>
                           </div>
                           {impuesto > 0 && (
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#92400E' }}>
                               <span>{viewingQuote.tipo_impuesto === 'iva' ? 'IVA 19%:' : 'Retención 15.25%:'}</span>
-                              <span style={{ fontWeight: 600 }}>+${impuesto.toLocaleString('es-CL')}</span>
+                              <span style={{ fontWeight: '600' }}>+${impuesto.toLocaleString('es-CL')}</span>
                             </div>
                           )}
                           <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '10px', display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ fontWeight: 700, color: '#111827' }}>Total</span>
-                            <span style={{ fontWeight: 700, fontSize: '16px', color: '#1B3A6B' }}>${viewingQuote.monto?.toLocaleString('es-CL')}</span>
+                            <span style={{ fontWeight: '700', color: '#111827' }}>Total</span>
+                            <span style={{ fontWeight: '700', fontSize: '16px', color: '#1B3A6B' }}>${viewingQuote.monto?.toLocaleString('es-CL')}</span>
                           </div>
                           <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontWeight: 600, color: '#111827' }}>Estado</span>
+                            <span style={{ fontWeight: '600', color: '#111827' }}>Estado</span>
                             <span style={{ background: estadoColorCotizacion[viewingQuote.estado]?.bg || '#F3F4F6', color: estadoColorCotizacion[viewingQuote.estado]?.color || '#374151', padding: '4px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 600 }}>
                               {viewingQuote.estado}
                             </span>
@@ -1523,16 +1526,16 @@ export default function Panel() {
               </div>
             </div>
 
-            <div style={{ background: '#fff', border: '1px solid #FCA5A5', borderRadius: '16px', padding: '28px' }}>
-              <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#991B1B', marginBottom: '4px' }}>Zona de peligro</h2>
-              <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '20px' }}>Acciones irreversibles. Procede con cuidado.</p>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: '#FFF5F5', borderRadius: '10px', border: '1px solid #FEE2E2' }}>
+            <div style={{ background: '#fff', border: '1px solid #FED7AA', borderRadius: '16px', padding: '28px' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#92400E', marginBottom: '4px' }}>Desactivar cuenta</h2>
+              <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '20px' }}>30 días de período de gracia para cambiar de idea.</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: '#FEF3C7', borderRadius: '10px', border: '1px solid #FED7AA' }}>
                 <div>
-                  <p style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 4px' }}>Eliminar mi cuenta</p>
-                  <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Se eliminarán permanentemente todos tus datos.</p>
+                  <p style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 4px' }}>Desactivar mi cuenta</p>
+                  <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Recibirás un email para reactivarla durante 30 días.</p>
                 </div>
-                <button onClick={() => setShowConfirmEliminar(true)} style={{ background: 'none', border: '1px solid #EF4444', color: '#EF4444', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, flexShrink: 0 }}>
-                  Eliminar cuenta
+                <button onClick={() => setShowConfirmEliminar(true)} style={{ background: 'none', border: '1px solid #F59E0B', color: '#F59E0B', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', flexShrink: 0 }}>
+                  Desactivar
                 </button>
               </div>
             </div>
