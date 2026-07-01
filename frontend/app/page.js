@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Footer from '@/components/Footer'
 
 const oficios = [
   'Todos', 'Gasfíter', 'Electricista', 'Pintor', 'Cerrajero',
@@ -62,7 +63,7 @@ export default function Home() {
       c.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
       c.oficios?.some(o => o.toLowerCase().includes(busqueda.toLowerCase())) ||
       c.oficio?.toLowerCase().includes(busqueda.toLowerCase()) ||
-     c.descripcion?.toLowerCase().includes(busqueda.toLowerCase())
+      c.descripcion?.toLowerCase().includes(busqueda.toLowerCase())
     )
 
     return coincideOficio && coincideComuna && coincideBusqueda
@@ -204,7 +205,7 @@ export default function Home() {
         )}
 
         {/* CTA CONTRATISTAS */}
-        <div style={{ background: '#1B3A6B', borderRadius: '16px', padding: '40px 48px' }}>
+        <div style={{ background: '#1B3A6B', borderRadius: '16px', padding: '40px 48px', marginBottom: '48px' }}>
           <div style={{ display: 'flex', gap: '80px', alignItems: 'flex-start' }}>
             <div style={{ flex: 1 }}>
               <p style={{ fontSize: '12px', fontWeight: '600', color: '#93C5FD', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Para profesionales</p>
@@ -248,7 +249,11 @@ export default function Home() {
             </div>
           </div>
         </div>
+
       </div>
+
+      {/* FOOTER */}
+      <Footer />
     </div>
   )
 }
