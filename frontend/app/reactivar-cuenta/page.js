@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-export default function ReactivarCuenta() {
+function ReactivarCuentaContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
