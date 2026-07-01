@@ -356,12 +356,13 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
         data = super().validate(attrs)
 
         # Bloquear login si email no verificado O cuenta desactivada
+        from rest_framework.exceptions import ValidationError
         try:
             contratista = Contratista.objects.get(usuario=self.user)
             if not contratista.email_verificado:
-                raise Exception('EMAIL_NO_VERIFICADO')
+                raise ValidationError('Verifica tu email antes de iniciar sesión.')
             if contratista.deleted_at is not None:
-                raise Exception('CUENTA_DESACTIVADA')
+                raise ValidationError('Tu cuenta está desactivada. Revisa tu email para reactivarla.')
         except Contratista.DoesNotExist:
             pass
 
