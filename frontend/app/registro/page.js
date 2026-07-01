@@ -92,7 +92,7 @@ function ModalAntesDeComenzar({ onAceptar, onCerrar, showTerminos, setShowTermin
               📸 Tu foto de perfil
             </h3>
             <p style={{ margin: 0, fontSize: '0.95em', color: '#6B7280', lineHeight: '1.6' }}>
-              Una vez registrado, te recomendamos que subas tu foto de perfil desde tu panel. Esto es recomendado para activar tu perfil público, ya que brinda seguridad y transparencia a los clientes que te contactarán a través de la plataforma.
+              Una vez registrado, te sugerimos que subas tu foto de perfil desde tu panel. Esto es recomendado para activar tu perfil público, brindará seguridad y transparencia a los clientes que te conacten a través de la plataforma.
             </p>
           </div>
 
