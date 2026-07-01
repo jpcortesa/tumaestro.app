@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .models import Contratista, Trabajo, Cliente, Cotizacion, ItemCotizacion, SolicitudCotizacion, Resena, PasswordResetToken, EmailVerificationToken
+from .models import Contratista, Trabajo, Cliente, Cotizacion, ItemCotizacion, SolicitudCotizacion, Resena, PasswordResetToken, EmailVerificationToken, ReactivationToken
 from .serializers import ContratistaSerializer, TrabajoSerializer, ClienteSerializer, CotizacionSerializer, ItemCotizacionSerializer, SolicitudCotizacionSerializer
 
 resend.api_key = os.environ.get('RESEND_API_KEY', '')
@@ -355,11 +355,13 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         data = super().validate(attrs)
 
-        # Bloquear login si email no verificado
+        # Bloquear login si email no verificado O cuenta desactivada
         try:
             contratista = Contratista.objects.get(usuario=self.user)
             if not contratista.email_verificado:
                 raise Exception('EMAIL_NO_VERIFICADO')
+            if contratista.deleted_at is not None:
+                raise Exception('CUENTA_DESACTIVADA')
         except Contratista.DoesNotExist:
             pass
 
@@ -369,7 +371,7 @@ class EmailTokenObtainPairView(TokenObtainPairView):
     serializer_class = EmailTokenObtainPairSerializer
 
 class ContratistaViewSet(viewsets.ModelViewSet):
-    queryset = Contratista.objects.all()
+    queryset = Contratista.objects.filter(deleted_at__isnull=True)
     serializer_class = ContratistaSerializer
 
 class RegistroView(APIView):
@@ -620,7 +622,7 @@ class CotizacionDetalleView(APIView):
 
 @api_view(['GET'])
 def contratistas_publicos(request):
-    contratistas = Contratista.objects.filter(activo=True, email_verificado=True).order_by('-creado_en')
+    contratistas = Contratista.objects.filter(activo=True, email_verificado=True, deleted_at__isnull=True).order_by('-creado_en')
     data = []
     for c in contratistas:
         resenas = Resena.objects.filter(contratista=c)
@@ -647,7 +649,7 @@ def contratistas_publicos(request):
 @api_view(['GET'])
 def contratista_publico(request, pk):
     try:
-        c = Contratista.objects.get(pk=pk, activo=True, email_verificado=True)
+        c = Contratista.objects.get(pk=pk, activo=True, email_verificado=True, deleted_at__isnull=True)
     except Contratista.DoesNotExist:
         return Response({'error': 'No encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -670,7 +672,7 @@ def contratista_publico(request, pk):
 @api_view(['POST'])
 def solicitud_cotizacion(request, pk):
     try:
-        contratista = Contratista.objects.get(pk=pk, activo=True, email_verificado=True)
+        contratista = Contratista.objects.get(pk=pk, activo=True, email_verificado=True, deleted_at__isnull=True)
     except Contratista.DoesNotExist:
         return Response({'error': 'Contratista no encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -983,15 +985,140 @@ def cambiar_password(request):
 
 @api_view(['DELETE'])
 def eliminar_cuenta(request):
+    """SOFT DELETE: Desactiva la cuenta (no la elimina)"""
     if not request.user.is_authenticated:
         return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
 
-    password = request.data.get('password', '')
-    if not request.user.check_password(password):
-        return Response({'error': 'Contraseña incorrecta'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        from django.utils import timezone
+        from datetime import timedelta
+        import secrets
+        
+        user = request.user
+        contratista = Contratista.objects.get(usuario=user)
+        
+        # Validar que no esté ya desactivada
+        if contratista.deleted_at is not None:
+            if (timezone.now() - contratista.deleted_at) < timedelta(days=30):
+                return Response(
+                    {
+                        'error': 'Tu cuenta ya está desactivada',
+                        'message': 'Tienes 30 días para cambiar de idea',
+                        'can_reactivate': True
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            else:
+                return Response(
+                    {'error': 'Tu cuenta ya está completamente eliminada'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # DESACTIVAR (Soft Delete)
+        contratista.desactivar()
+        
+        # Generar token de reactivación
+        ReactivationToken.objects.filter(user=user, usado=False).delete()
+        reactivation_token = ReactivationToken.objects.create(
+            user=user,
+            token=secrets.token_urlsafe(32)
+        )
+        
+        # Enviar email CON LINK DE REACTIVACIÓN
+        try:
+            link_reactivar = f"{FRONTEND_URL}/reactivar-cuenta?token={reactivation_token.token}"
+            resend.Emails.send({
+                "from": "tumaestro.app <noreply@tumaestro.app>",
+                "to": user.email,
+                "subject": "📋 Tu cuenta ha sido desactivada - tumaestro.app",
+                "html": f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+                    <h2 style="color: #1B3A6B;">Tu cuenta ha sido desactivada</h2>
+                    <p>Hola <strong>{contratista.nombre}</strong>,</p>
+                    <p>Hemos desactivado tu cuenta en tumaestro.app. No te preocupes, puedes reactivarla en cualquier momento durante los próximos 30 días.</p>
+                    
+                    <div style="background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                        <p style="margin: 0;"><strong>⏰ PERÍODO DE GRACIA: 30 DÍAS</strong></p>
+                        <p style="margin: 8px 0 0; color: #92400E; font-size: 14px;">Después de 30 días, tu cuenta se eliminará permanentemente.</p>
+                    </div>
+                    
+                    <p style="color: #374151; margin: 20px 0;">¿Cambió de idea? Reactiva tu cuenta con un click:</p>
+                    
+                    <p style="text-align: center;">
+                        <a href="{link_reactivar}" style="display: inline-block; background: #059669; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px;">
+                            Reactivar mi cuenta →
+                        </a>
+                    </p>
+                    
+                    <p style="color: #6B7280; font-size: 13px; margin-top: 24px;">
+                        O copia este link en tu navegador:<br>
+                        <code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; word-break: break-all;">{link_reactivar}</code>
+                    </p>
+                    
+                    <p style="color: #9CA3AF; font-size: 12px; margin-top: 32px; border-top: 1px solid #E5E7EB; padding-top: 16px;">
+                        tumaestro.app — La plataforma para contratistas independientes en Chile
+                    </p>
+                </div>
+                """
+            })
+        except Exception as e:
+            print(f"Error enviando email: {e}")
+        
+        return Response(
+            {
+                'message': 'Cuenta desactivada exitosamente',
+                'details': 'Tienes 30 días para cambiar de idea'
+            },
+            status=status.HTTP_200_OK
+        )
+    
+    except Contratista.DoesNotExist:
+        return Response({'error': 'Contratista no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    request.user.delete()
-    return Response({'mensaje': 'Cuenta eliminada permanentemente'})
+
+@api_view(['DELETE'])
+def reactivar_cuenta(request):
+    """Reactiva una cuenta desactivada (dentro de 30 días)"""
+    if not request.user.is_authenticated:
+        return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    try:
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        user = request.user
+        contratista = Contratista.objects.get(usuario=user)
+        
+        if contratista.deleted_at is None:
+            return Response({'error': 'Tu cuenta no está desactivada'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not contratista.can_reactivate:
+            return Response({'error': 'Período de gracia expirado'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # REACTIVAR
+        success = contratista.reactivar()
+        
+        if success:
+            try:
+                resend.Emails.send({
+                    "from": "tumaestro.app <noreply@tumaestro.app>",
+                    "to": user.email,
+                    "subject": "🎉 Tu cuenta ha sido reactivada - tumaestro.app",
+                    "html": f"<h2>¡Bienvenido de vuelta, {contratista.nombre}!</h2><p>Tu cuenta ha sido reactivada exitosamente.</p>"
+                })
+            except:
+                pass
+            
+            return Response({'message': 'Cuenta reactivada exitosamente'})
+        else:
+            return Response({'error': 'Error al reactivar'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    except Contratista.DoesNotExist:
+        return Response({'error': 'Contratista no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
@@ -1176,3 +1303,68 @@ def reenviar_verificacion(request):
     enviar_email_verificacion(user, nuevo_token.token)
 
     return Response({'mensaje': 'Si ese email está registrado y pendiente de verificación, recibirás un nuevo link.'})
+
+
+@api_view(['POST'])
+def reactivar_con_token(request):
+    """Reactiva cuenta con token público (sin login)"""
+    token_str = request.data.get('token', '')
+    
+    if not token_str:
+        return Response({'error': 'Token requerido'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        reactivation_token = ReactivationToken.objects.get(token=token_str)
+    except ReactivationToken.DoesNotExist:
+        return Response({'error': 'Link inválido o expirado'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Validar token
+    if not reactivation_token.is_valid():
+        return Response({'error': 'Este link expiró. Período de gracia finalizado.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        contratista = Contratista.objects.get(usuario=reactivation_token.user)
+    except Contratista.DoesNotExist:
+        return Response({'error': 'Cuenta no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+    
+    if contratista.deleted_at is None:
+        return Response({'error': 'Tu cuenta no está desactivada'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # REACTIVAR
+    contratista.reactivar()
+    reactivation_token.usado = True
+    reactivation_token.save()
+    
+    # Enviar email de confirmación
+    try:
+        resend.Emails.send({
+            "from": "tumaestro.app <noreply@tumaestro.app>",
+            "to": reactivation_token.user.email,
+            "subject": "🎉 Tu cuenta ha sido reactivada - tumaestro.app",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+                <h2 style="color: #059669;">¡Bienvenido de vuelta!</h2>
+                <p>Hola <strong>{contratista.nombre}</strong>,</p>
+                <p>Tu cuenta ha sido reactivada exitosamente. Ahora puedes:</p>
+                <ul style="color: #374151;">
+                    <li>Iniciar sesión en tu panel</li>
+                    <li>Recibir nuevas solicitudes de clientes</li>
+                    <li>Gestionar tus cotizaciones</li>
+                </ul>
+                
+                <p style="text-align: center; margin: 24px 0;">
+                    <a href="{FRONTEND_URL}/login" style="display: inline-block; background: #1B3A6B; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px;">
+                        Ir a mi panel →
+                    </a>
+                </p>
+                
+                <p style="color: #9CA3AF; font-size: 12px; margin-top: 32px; border-top: 1px solid #E5E7EB; padding-top: 16px;">
+                    tumaestro.app — La plataforma para contratistas independientes en Chile
+                </p>
+            </div>
+            """
+        })
+    except Exception as e:
+        print(f"Error enviando email de reactivación: {e}")
+    
+    return Response({'message': 'Cuenta reactivada exitosamente'}, status=status.HTTP_200_OK)

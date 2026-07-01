@@ -3,6 +3,8 @@ import os
 import resend
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
+from datetime import timedelta
 
 resend.api_key = os.environ.get('RESEND_API_KEY', '')
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://tumaestro.app')
@@ -25,9 +27,52 @@ class Contratista(models.Model):
     verificado = models.BooleanField(default=False)
     foto_url = models.URLField(blank=True, null=True, help_text="URL de la foto de perfil en Cloudinary")
     creado_en = models.DateTimeField(auto_now_add=True)
+    
+    # CAMPOS PARA SOFT DELETE (DESACTIVACIÓN)
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    anonymized_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.nombre} - {self.oficio}"
+    
+    @property
+    def is_active_account(self):
+        return self.deleted_at is None or (timezone.now() - self.deleted_at) < timedelta(days=30)
+    
+    @property
+    def can_reactivate(self):
+        if self.deleted_at is None:
+            return False
+        return (timezone.now() - self.deleted_at) < timedelta(days=30)
+    
+    def desactivar(self):
+        self.deleted_at = timezone.now()
+        self.save()
+    
+    def reactivar(self):
+        if self.can_reactivate:
+            self.deleted_at = None
+            self.anonymized_at = None
+            self.is_deleted = False
+            self.save()
+            return True
+        return False
+    
+    def anonimizar(self):
+        if self.deleted_at and (timezone.now() - self.deleted_at) >= timedelta(days=30):
+            import hashlib
+            self.nombre = f"Usuario Eliminado #{self.id}"
+            self.email_verificado = False
+            self.telefono = ""
+            self.foto_url = None
+            self.is_deleted = True
+            self.anonymized_at = timezone.now()
+            if self.rut:
+                self.rut = hashlib.sha256(self.rut.encode()).hexdigest()[:12]
+            self.save()
+            return True
+        return False
 
 
 class Cliente(models.Model):
@@ -303,3 +348,21 @@ class EmailVerificationToken(models.Model):
 
     def __str__(self):
         return f"Verificación email para {self.user.email}"
+    
+class ReactivationToken(models.Model):
+    """Token para reactivar cuenta desactivada (válido 30 días)"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    token = models.CharField(max_length=255, unique=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    usado = models.BooleanField(default=False)
+
+    def is_valid(self):
+        """Token válido si no fue usado y tiene menos de 30 días"""
+        from django.utils import timezone
+        from datetime import timedelta
+        if self.usado:
+            return False
+        return timezone.now() - self.creado_en < timedelta(days=30)
+
+    def __str__(self):
+        return f"ReactivationToken - {self.user.email}"
