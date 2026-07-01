@@ -491,7 +491,7 @@ export default function Panel() {
   const trabajosActivos = trabajosReal.filter(t => t.estado === 'pendiente' || t.estado === 'en_progreso').length
   const cotizacionesPendientes = cotizacionesReal.filter(c => c.estado === 'borrador' || c.estado === 'enviada').length
 
-  // CALCULAR INGRESOS DIFERENCIADOS
+  // CALCULAR INGRESOS ACUMULADOS (todos los tiempos)
   const calcularIngresos = () => {
     let ingresos = {
       factura: { bruto: 0, iva: 0, neto: 0 },
@@ -501,14 +501,10 @@ export default function Panel() {
       total_neto: 0
     }
 
+    // Sumar TODOS los trabajos completados (sin filtro de mes)
     trabajosReal
-      .filter(t => {
-        if (t.estado !== 'completado') return false
-        const fecha = new Date(t.fecha || t.creado_en)
-        return fecha.getMonth() === mesActual && fecha.getFullYear() === añoActual
-      })
+      .filter(t => t.estado === 'completado')
       .forEach(t => {
-        // Mapear tipo_impuesto a tipo de documento
         const tipoImpuesto = t.tipo_impuesto || 'ninguno'
 
         if (tipoImpuesto === 'iva') {
@@ -743,7 +739,7 @@ export default function Panel() {
                     { label: 'Trabajos activos', valor: String(trabajosActivos), icono: '⚒', color: '#EEF2FF', texto: '#1B3A6B' },
                     { label: 'Cotizaciones pendientes', valor: String(cotizacionesPendientes), icono: '📋', color: '#FEF3C7', texto: '#92400E' },
                     { 
-                      label: 'Ingresos netos del mes', 
+                      label: 'Ingresos netos totales', 
                       valor: ingresos.total_neto > 0 ? `$${ingresos.total_neto.toLocaleString('es-CL')}` : '$0', 
                       icono: '💰', 
                       color: '#ECFDF5', 
@@ -761,51 +757,45 @@ export default function Panel() {
                   ))}
                 </div>
 
-                {/* DESGLOSE DE INGRESOS */}
-                {ingresos.total_neto > 0 && (
-                  <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
-                    <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: '0 0 20px' }}>📊 Desglose de ingresos</h2>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
-                      {/* FACTURA */}
-                      {ingresos.factura.bruto > 0 && (
-                        <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '12px', padding: '20px' }}>
-                          <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#065F46', margin: '0 0 16px' }}>💼 Facturas con IVA</h3>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #BBF7D0' }}>
-                            <span style={{ fontSize: '13px', color: '#6B7280' }}>Monto facturado:</span>
-                            <span style={{ fontWeight: '600', color: '#065F46' }}>${ingresos.factura.bruto.toLocaleString('es-CL')}</span>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', color: '#92400E' }}>
-                            <span style={{ fontSize: '13px' }}>IVA 19%:</span>
-                            <span style={{ fontWeight: '600' }}>-${ingresos.factura.iva.toLocaleString('es-CL')}</span>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid #BBF7D0' }}>
-                            <span style={{ fontWeight: '700', color: '#065F46' }}>Neto:</span>
-                            <span style={{ fontWeight: '700', fontSize: '15px', color: '#065F46' }}>${ingresos.factura.neto.toLocaleString('es-CL')}</span>
-                          </div>
-                        </div>
-                      )}
+                {/* DESGLOSE DE INGRESOS - SIEMPRE VISIBLE */}
+                <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
+                  <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: '0 0 20px' }}>Desglose de ingresos</h2>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
+                    {/* FACTURA */}
+                    <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '12px', padding: '20px' }}>
+                      <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#065F46', margin: '0 0 16px' }}>Facturas con IVA</h3>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #BBF7D0' }}>
+                        <span style={{ fontSize: '13px', color: '#6B7280' }}>Monto facturado:</span>
+                        <span style={{ fontWeight: '600', color: '#065F46' }}>${ingresos.factura.bruto.toLocaleString('es-CL')}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', color: '#92400E' }}>
+                        <span style={{ fontSize: '13px' }}>IVA 19%:</span>
+                        <span style={{ fontWeight: '600' }}>-${ingresos.factura.iva.toLocaleString('es-CL')}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid #BBF7D0' }}>
+                        <span style={{ fontWeight: '700', color: '#065F46' }}>Neto:</span>
+                        <span style={{ fontWeight: '700', fontSize: '15px', color: '#065F46' }}>${ingresos.factura.neto.toLocaleString('es-CL')}</span>
+                      </div>
+                    </div>
 
-                      {/* BOLETA */}
-                      {ingresos.boleta.bruto > 0 && (
-                        <div style={{ background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '12px', padding: '20px' }}>
-                          <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#92400E', margin: '0 0 16px' }}>📋 Boletas de Honorario</h3>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #FCD34D' }}>
-                            <span style={{ fontSize: '13px', color: '#6B7280' }}>Monto emitido:</span>
-                            <span style={{ fontWeight: '600', color: '#92400E' }}>${ingresos.boleta.bruto.toLocaleString('es-CL')}</span>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', color: '#92400E' }}>
-                            <span style={{ fontSize: '13px' }}>Retención 15.25%:</span>
-                            <span style={{ fontWeight: '600' }}>-${ingresos.boleta.retencion.toLocaleString('es-CL')}</span>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid #FCD34D' }}>
-                            <span style={{ fontWeight: '700', color: '#92400E' }}>Neto:</span>
-                            <span style={{ fontWeight: '700', fontSize: '15px', color: '#92400E' }}>${ingresos.boleta.neto.toLocaleString('es-CL')}</span>
-                          </div>
-                        </div>
-                      )}
+                    {/* BOLETA */}
+                    <div style={{ background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '12px', padding: '20px' }}>
+                      <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#92400E', margin: '0 0 16px' }}>Boletas de Honorario</h3>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #FCD34D' }}>
+                        <span style={{ fontSize: '13px', color: '#6B7280' }}>Monto emitido:</span>
+                        <span style={{ fontWeight: '600', color: '#92400E' }}>${ingresos.boleta.bruto.toLocaleString('es-CL')}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', color: '#92400E' }}>
+                        <span style={{ fontSize: '13px' }}>Retención 15.25%:</span>
+                        <span style={{ fontWeight: '600' }}>-${ingresos.boleta.retencion.toLocaleString('es-CL')}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid #FCD34D' }}>
+                        <span style={{ fontWeight: '700', color: '#92400E' }}>Neto:</span>
+                        <span style={{ fontWeight: '700', fontSize: '15px', color: '#92400E' }}>${ingresos.boleta.neto.toLocaleString('es-CL')}</span>
+                      </div>
                     </div>
                   </div>
-                )}
+                </div>
 
                 <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
