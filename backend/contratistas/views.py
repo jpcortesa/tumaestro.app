@@ -1017,11 +1017,14 @@ def eliminar_cuenta(request):
         # DESACTIVAR (Soft Delete)
         contratista.desactivar()
         
-        # Generar token de reactivación
-        ReactivationToken.objects.filter(user=user, usado=False).delete()
-        reactivation_token = ReactivationToken.objects.create(
+        # Generar token de reactivación (UPDATE O CREATE si ya existe)
+        token_str = secrets.token_urlsafe(32)
+        reactivation_token, created = ReactivationToken.objects.update_or_create(
             user=user,
-            token=secrets.token_urlsafe(32)
+            defaults={
+                'token': token_str,
+                'usado': False  # Resetear marcas
+            }
         )
         
         # Enviar email CON LINK DE REACTIVACIÓN
