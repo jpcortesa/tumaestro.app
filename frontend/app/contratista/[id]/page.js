@@ -182,7 +182,6 @@ export default function PerfilContratista() {
         <span onClick={() => window.location.href = '/'} style={{ color: '#fff', fontSize: '20px', fontWeight: '600', cursor: 'pointer' }}>tumaestro<span style={{ color: '#F97316' }}>.app</span></span>
         <div style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
           <span onClick={() => window.location.href = '/'} style={{ color: '#93C5FD', fontSize: '14px', cursor: 'pointer' }}>Volver al directorio</span>
-          <button onClick={() => window.location.href = '/registro'} style={{ background: '#F97316', border: 'none', color: '#fff', borderRadius: '8px', padding: '8px 20px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>Soy contratista</button>
         </div>
       </nav>
 
