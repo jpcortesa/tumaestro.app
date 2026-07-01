@@ -246,7 +246,7 @@ export default function PerfilContratista() {
 
             {contratista.certificacion && contratista.certificacion.trim() && (
               <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '16px', padding: '28px', marginBottom: '24px' }}>
-                <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>🎓 Certificaciones y títulos</h2>
+                <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Certificaciones y títulos</h2>
                 <p style={{ fontSize: '15px', color: '#374151', lineHeight: '1.7', margin: 0 }}>
                   {contratista.certificacion}
                 </p>
