@@ -10,7 +10,7 @@ function ReactivarCuentaContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
 
-  const [estado, setEstado] = useState('cargando'); // cargando, listo, procesando, exito, error
+  const [estado, setEstado] = useState('cargando');
   const [mensaje, setMensaje] = useState('');
 
   useEffect(() => {
@@ -19,20 +19,7 @@ function ReactivarCuentaContent() {
       setMensaje('Link inválido o expirado');
       return;
     }
-
-    // Validar que el token sea válido (GET para verificar)
-    const verificarToken = async () => {
-      try {
-        // Intentamos hacer POST directamente para no añadir complejidad
-        // El backend validará el token
-        setEstado('listo');
-      } catch (err) {
-        setEstado('error');
-        setMensaje('Error al procesar el link');
-      }
-    };
-
-    verificarToken();
+    setEstado('listo');
   }, [token]);
 
   const handleReactivar = async () => {
@@ -61,7 +48,6 @@ function ReactivarCuentaContent() {
       setEstado('exito');
       setMensaje('¡Tu cuenta ha sido reactivada exitosamente!');
 
-      // Redirigir al login en 3 segundos
       setTimeout(() => {
         router.push('/login');
       }, 3000);
@@ -273,5 +259,52 @@ function ReactivarCuentaContent() {
         )}
       </div>
     </div>
+  );
+}
+
+function ReactivarCuentaLoading() {
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#0f172a',
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          padding: '40px',
+          maxWidth: '500px',
+          width: '100%',
+          textAlign: 'center',
+        }}
+      >
+        <div
+          style={{
+            fontSize: '48px',
+            marginBottom: '20px',
+            animation: 'spin 1s linear infinite',
+          }}
+        >
+          ⏳
+        </div>
+        <h1 style={{ fontSize: '24px', color: '#1B3A6B', marginBottom: '10px' }}>
+          Cargando...
+        </h1>
+        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      </div>
+    </div>
+  );
+}
+
+export default function ReactivarCuenta() {
+  return (
+    <Suspense fallback={<ReactivarCuentaLoading />}>
+      <ReactivarCuentaContent />
+    </Suspense>
   );
 }
